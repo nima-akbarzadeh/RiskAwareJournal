@@ -4,8 +4,10 @@ import pandas as pd
 
 if __name__ == '__main__':
 
-    df = pd.read_excel('./planning-finite/res.xlsx')
-    target_labels = ['MEAN-Ri_riskaware_to_neutral', 'MEAN-Ri_rewutility_to_neutral'] 
+    base_path = './planning-finite'
+    file_name = 'res.xlsx'
+    df = pd.read_excel(f'{base_path}/{file_name}')
+    target_labels = ['MEAN-Ri_obj_riskaware_to_neutral', 'MEAN-Ri_rew_neutral_to_riskaware'] 
     
     for target_label in target_labels:
         y = df[target_label]
@@ -36,7 +38,7 @@ if __name__ == '__main__':
         plt.ylabel('Frequency', fontsize=14, fontweight='bold')
 
         plt.tight_layout()
-        output_path = f'./planning-finite/histogram_plot_{target_label}.png'
+        output_path = f'{base_path}/histogram_plot_{target_label}.png'
         plt.savefig(output_path)
         print(f"Histogram saved to {output_path}")
         plt.show()

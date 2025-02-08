@@ -9,14 +9,14 @@ def main():
 
     # Combinations
     param_sets = {
-        'discount_factors': [0.9, 0.95],
-        'n_steps': [10],
-        'n_states': [2, 3, 4, 5],
-        'n_augmnt': [2],
-        'n_arms_coefficient': [3, 4, 5],
-        'utility_functions': [(1, 0), (2, 4), (2, 8), (2, 16), (3, 4), (3, 8), (3, 16)],
+        'discount_factors': [0.95],
+        'n_steps': [100],
+        'n_augmnt': [10],
+        'n_states': [5, 4, 3, 2],
+        'n_arms_coefficient': [5, 4, 3],
+        'utility_functions': [(2, 4), (2, 8), (2, 16), (3, 4), (3, 8), (3, 16)],
         'thresholds': [np.round(0.1 * n, 1) for n in range(1, 10)],
-        'fraction_of_arms': [0.3, 0.4, 0.5]
+        'fraction_of_arms': [0.1, 0.3, 0.5]
     }
 
     # Iterations

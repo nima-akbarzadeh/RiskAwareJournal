@@ -16,20 +16,23 @@ def run_multiple_planning_combinations(param_list):
     num_cpus = cpu_count()-1
     print(f"Using {num_cpus} CPUs")
     
-    eval_keys = ['Neutral', 'RewUtility', 'RiskAware', 
-                 'RI_RiskAware_to_Neutral', 'RI_RiskAware_to_RewUtility', 'RI_RewUtility_to_Neutral',
-                 'DF_RiskAware_to_Neutral', 'DF_RiskAware_to_RewUtility', 'DF_RewUtility_to_Neutral',]
+    eval_keys = ['Neutral_Obj', 'RewUtility_Obj', 'RiskAware_Obj',
+                 'RI_Obj_RiskAware_to_Neutral', 'RI_Obj_RiskAware_to_RewUtility', 'RI_Obj_RewUtility_to_Neutral',
+                 'DF_Obj_RiskAware_to_Neutral', 'DF_Obj_RiskAware_to_RewUtility', 'DF_Obj_RewUtility_to_Neutral',
+                 'Neutral_Rew', 'RewUtility_Rew', 'RiskAware_Rew', 
+                 'RI_Rew_Neutral_to_RiskAware', 'RI_Rew_Neutral_to_RewUtility',
+                 'DF_Rew_Neutral_to_RiskAware', 'DF_Rew_Neutral_to_RewUtility']
     results = {key: {} for key in eval_keys}
     averages = {key: {} for key in eval_keys}
     total = len(param_list)
     with Pool(num_cpus) as pool:
         # Use imap to get results as they complete
         for count, output in enumerate(pool.imap_unordered(run_a_planning_combination, param_list), 1):
-            key_value, avg_n, avg_ru, avg_ra, improve_rn, improve_ru, improve_un, diff_rn, diff_ru, diff_un = output
-            for i, value in enumerate([avg_n, avg_ru, avg_ra, improve_rn, improve_ru, improve_un, diff_rn, diff_ru, diff_un]):
+            key_value, raavg_n, raavg_ru, raavg_ra, improve_obj_rn, improve_obj_ru, improve_obj_un, diff_obj_rn, diff_obj_ru, diff_obj_un, travg_n, travg_ru, travg_ra, improve_rew_nr, improve_rew_nu, diff_rew_nr, diff_rew_nu = output
+            for i, value in enumerate([raavg_n, raavg_ru, raavg_ra, improve_obj_rn, improve_obj_ru, improve_obj_un, diff_obj_rn, diff_obj_ru, diff_obj_un, travg_n, travg_ru, travg_ra, improve_rew_nr, improve_rew_nu, diff_rew_nr, diff_rew_nu]):
                 results[eval_keys[i]][key_value] = value
 
-            print(f"{count} / {total}: {key_value} ---> MEAN-Rel-RN: {improve_rn}, MEAN-Rel-UN: {improve_un}")
+            print(f"{count} / {total}: {key_value} ---> MEAN-Rel-RN: {improve_obj_rn}, MEAN-Rel-UN: {improve_obj_un}")
             for _, value in zip(['nt', 'ns', 'nc', 'ut', 'th', 'fr'], output[0].split('_')):
                 param_key = f'{value}'
                 for i, avg_key in enumerate(eval_keys):
@@ -73,17 +76,24 @@ def run_a_planning_combination(params):
         rew, obj = process(n_iterations, nt, ns, na, nch, th, rew_vals, markov_matrix, initial_states, ut[0], ut[1])
         if save_flag:
             joblib.dump([rew, obj], f"{PATH}{key_value}_{name}.joblib")
-        results[name] = numpy.mean(obj)
+        results[name+'_obj'] = numpy.mean(obj)
+        results[name+'_rew'] = numpy.mean(rew)
 
-    improve_rn = numpy.round(100 * (results['RiskAware'] - results['Neutral']) / results['Neutral'], 2)
-    improve_ru = numpy.round(100 * (results['RiskAware'] - results['RewUtility']) / results['RewUtility'], 2)
-    improve_un = numpy.round(100 * (results['RewUtility'] - results['Neutral']) / results['Neutral'], 2)
+    improve_obj_rn = 100 * (results['RiskAware_obj'] - results['Neutral_obj']) / results['Neutral_obj']
+    improve_obj_ru = 100 * (results['RiskAware_obj'] - results['RewUtility_obj']) / results['RewUtility_obj']
+    improve_obj_un = 100 * (results['RewUtility_obj'] - results['Neutral_obj']) / results['Neutral_obj']
 
-    diff_rn = na * np.round(results['RiskAware'] - results['Neutral'], 4)
-    diff_ru = na * np.round(results['RiskAware'] - results['RewUtility'], 4)
-    diff_un = na * np.round(results['RewUtility'] - results['Neutral'], 4)
+    diff_obj_rn = na * results['RiskAware_obj'] - results['Neutral_obj']
+    diff_obj_ru = na * results['RiskAware_obj'] - results['RewUtility_obj']
+    diff_obj_un = na * results['RewUtility_obj'] - results['Neutral_obj']
 
-    return key_value, results["Neutral"], results["RewUtility"], results["RiskAware"], improve_rn, improve_ru, improve_un, diff_rn, diff_ru, diff_un
+    improve_rew_nr = 100 * (results['Neutral_rew'] - results['RiskAware_rew']) / results['RiskAware_rew']
+    improve_rew_nu = 100 * (results['Neutral_rew'] - results['RewUtility_rew']) / results['RewUtility_rew']
+
+    diff_rew_nr = na * results['Neutral_rew'] - results['RiskAware_rew']
+    diff_rew_nu = na * results['Neutral_rew'] - results['RewUtility_rew']
+
+    return key_value, results["Neutral_obj"], results["RewUtility_obj"], results["RiskAware_obj"], improve_obj_rn, improve_obj_ru, improve_obj_un, diff_obj_rn, diff_obj_ru, diff_obj_un, results["Neutral_rew"], results["RewUtility_rew"], results["RiskAware_rew"], improve_rew_nr, improve_rew_nu, diff_rew_nr, diff_rew_nu
 
 
 def run_multiple_ns_planning_combinations(param_list):
@@ -92,18 +102,18 @@ def run_multiple_ns_planning_combinations(param_list):
     num_cpus = cpu_count()-1
     print(f"Using {num_cpus} CPUs")
     
-    eval_keys = ['Neutral', 'RiskAware', 'RI_RiskAware_to_Neutral', 'DF_RiskAware_to_Neutral']
+    eval_keys = ['Neutral_Obj', 'RiskAware_Obj', 'RI_Obj_RiskAware_to_Neutral', 'DF_Obj_RiskAware_to_Neutral', 'Neutral_Rew', 'RiskAware_Rew', 'RI_Rew_RiskAware_to_Neutral', 'DF_Rew_RiskAware_to_Neutral']
     results = {key: {} for key in eval_keys}
     averages = {key: {} for key in eval_keys}
     total = len(param_list)
     with Pool(num_cpus) as pool:
         # Use imap to get results as they complete
         for count, output in enumerate(pool.imap_unordered(run_a_ns_planning_combination, param_list), 1):
-            key_value, avg_n, avg_ra, improve_rn, diff_rn= output
-            for i, value in enumerate([avg_n, avg_ra, improve_rn, diff_rn]):
+            key_value, raavg_n, raavg_ra, improve_obj_rn, diff_obj_rn, travg_n, travg_ra, improve_rew_nr, diff_rew_nr = output
+            for i, value in enumerate([raavg_n, raavg_ra, improve_obj_rn, diff_obj_rn, travg_n, travg_ra, improve_rew_nr, diff_rew_nr]):
                 results[eval_keys[i]][key_value] = value
 
-            print(f"{count} / {total}: {key_value} ---> MEAN-Rel-RN: {improve_rn}")
+            print(f"{count} / {total}: {key_value} ---> MEAN-Rel-RN: {improve_obj_rn}")
             for _, value in zip(['df', 'nt', 'ns', 'ng', 'nc', 'ut', 'th', 'fr'], output[0].split('_')):
                 param_key = f'{value}'
                 for i, avg_key in enumerate(eval_keys):
@@ -142,12 +152,16 @@ def run_a_ns_planning_combination(params):
         rew, obj = process(n_iterations, nt, ns, na, nch, th, rew_ns_vals, markov_matrix, initial_states, ut[0], ut[1])
         if save_flag:
             joblib.dump([rew, obj], f"{PATH}{key_value}_{name}.joblib")
-        results[name] = numpy.mean(obj)
+        results[name+'_obj'] = numpy.mean(obj)
+        results[name+'_rew'] = numpy.mean(rew)
 
-    improve_rn = numpy.round(100 * (results['RiskAware'] - results['Neutral']) / results['Neutral'], 2)
-    diff_rn = na * np.round(results['RiskAware'] - results['Neutral'], 4)
+    improve_obj_rn = 100 * (results['RiskAware_obj'] - results['Neutral_obj']) / results['Neutral_obj']
+    diff_obj_rn = na * results['RiskAware_obj'] - results['Neutral_obj']
 
-    return key_value, results["Neutral"], results["RiskAware"], improve_rn, diff_rn
+    improve_rew_nr = 100 * (results['Neutral_rew'] - results['RiskAware_rew']) / results['RiskAware_rew']
+    diff_rew_nr = na * results['Neutral_rew'] - results['RiskAware_rew']
+
+    return key_value, results["Neutral_obj"], results["RiskAware_obj"], improve_obj_rn, diff_obj_rn, results["Neutral_rew"], results["RiskAware_rew"], improve_rew_nr, diff_rew_nr
 
 
 def run_multiple_inf_planning_combinations(param_list):
@@ -156,18 +170,18 @@ def run_multiple_inf_planning_combinations(param_list):
     num_cpus = cpu_count()-1
     print(f"Using {num_cpus} CPUs")
     
-    eval_keys = ['Neutral', 'RiskAware', 'RI_RiskAware_to_Neutral', 'DF_RiskAware_to_Neutral']
+    eval_keys = ['Neutral_Obj', 'RiskAware_Obj', 'RI_Obj_RiskAware_to_Neutral', 'DF_Obj_RiskAware_to_Neutral', 'Neutral_Rew', 'RiskAware_Rew', 'RI_Rew_RiskAware_to_Neutral', 'DF_Rew_RiskAware_to_Neutral']
     results = {key: {} for key in eval_keys}
     averages = {key: {} for key in eval_keys}
     total = len(param_list)
     with Pool(num_cpus) as pool:
         # Use imap to get results as they complete
-        for count, output in enumerate(pool.imap_unordered(run_a_inf_planning_combination, param_list), 1):
-            key_value, avg_n, avg_ra, improve_rn, diff_rn= output
-            for i, value in enumerate([avg_n, avg_ra, improve_rn, diff_rn]):
+        for count, output in enumerate(pool.imap_unordered(run_a_ns_planning_combination, param_list), 1):
+            key_value, raavg_n, raavg_ra, improve_obj_rn, diff_obj_rn, travg_n, travg_ra, improve_rew_nr, diff_rew_nr = output
+            for i, value in enumerate([raavg_n, raavg_ra, improve_obj_rn, diff_obj_rn, travg_n, travg_ra, improve_rew_nr, diff_rew_nr]):
                 results[eval_keys[i]][key_value] = value
 
-            print(f"{count} / {total}: {key_value} ---> MEAN-Rel-RN: {improve_rn}")
+            print(f"{count} / {total}: {key_value} ---> MEAN-Rel-RN: {improve_obj_rn}")
             for _, value in zip(['df', 'nt', 'ns', 'ng', 'nc', 'ut', 'th', 'fr'], output[0].split('_')):
                 param_key = f'{value}'
                 for i, avg_key in enumerate(eval_keys):
@@ -179,6 +193,9 @@ def run_multiple_inf_planning_combinations(param_list):
 
 
 def run_a_inf_planning_combination(params):
+
+    import time
+    start_time = time.time()
     df, nt, ns, ng, nc, ut, th, fr, n_iterations, save_flag, PATH = params
     key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nc{nc}_ut{ut}_th{th}_fr{fr}'
     na = nc * ns
@@ -206,12 +223,17 @@ def run_a_inf_planning_combination(params):
         rew, obj = process(n_iterations, df, nt, ns, na, nch, th, rew_vals, markov_matrix, initial_states, ut[0], ut[1])
         if save_flag:
             joblib.dump([rew, obj], f"{PATH}{key_value}_{name}.joblib")
-        results[name] = numpy.mean(obj)
+        results[name+'_obj'] = numpy.mean(obj)
+        results[name+'_rew'] = numpy.mean(rew)
 
-    improve_rn = numpy.round(100 * (results['RiskAware'] - results['Neutral']) / results['Neutral'], 2)
-    diff_rn = na * np.round(results['RiskAware'] - results['Neutral'], 4)
+    improve_obj_rn = 100 * (results['RiskAware_obj'] - results['Neutral_obj']) / results['Neutral_obj']
+    diff_obj_rn = na * results['RiskAware_obj'] - results['Neutral_obj']
 
-    return key_value, results["Neutral"], results["RiskAware"], improve_rn, diff_rn
+    improve_rew_nr = 100 * (results['Neutral_rew'] - results['RiskAware_rew']) / results['RiskAware_rew']
+    diff_rew_nr = na * results['Neutral_rew'] - results['RiskAware_rew']
+    print(f"- Duration of this round = {time.time() - start_time}")
+
+    return key_value, results["Neutral_obj"], results["RiskAware_obj"], improve_obj_rn, diff_obj_rn, results["Neutral_rew"], results["RiskAware_rew"], improve_rew_nr, diff_rew_nr
 
 
 def run_learning_combination(params):
@@ -220,18 +242,18 @@ def run_learning_combination(params):
     if tt == 'structured':
         prob_remain = numpy.round(numpy.linspace(0.1 / ns, 0.1 / ns, na), 2)
     elif tt == 'clinical':
-        pr_ss_0 = np.round(np.linspace(0.657, 0.762, na), 3)
-        np.random.shuffle(pr_ss_0)
-        pr_sp_0 = np.round(np.linspace(0.201, 0.287, na), 3)
-        np.random.shuffle(pr_sp_0)
-        pr_pp_0 = np.round(np.linspace(0.882, 0.922, na), 3)
-        np.random.shuffle(pr_pp_0)
-        pr_ss_1 = np.round(np.linspace(0.806, 0.869, na), 3)
-        np.random.shuffle(pr_ss_1)
-        pr_sp_1 = np.round(np.linspace(0.115, 0.171, na), 3)
-        np.random.shuffle(pr_sp_1)
-        pr_pp_1 = np.round(np.linspace(0.879, 0.921, na), 3)
-        np.random.shuffle(pr_pp_1)
+        pr_ss_0 = numpy.round(numpy.linspace(0.657, 0.762, na), 3)
+        numpy.random.shuffle(pr_ss_0)
+        pr_sp_0 = numpy.round(numpy.linspace(0.201, 0.287, na), 3)
+        numpy.random.shuffle(pr_sp_0)
+        pr_pp_0 = numpy.round(numpy.linspace(0.882, 0.922, na), 3)
+        numpy.random.shuffle(pr_pp_0)
+        pr_ss_1 = numpy.round(numpy.linspace(0.806, 0.869, na), 3)
+        numpy.random.shuffle(pr_ss_1)
+        pr_sp_1 = numpy.round(numpy.linspace(0.115, 0.171, na), 3)
+        numpy.random.shuffle(pr_sp_1)
+        pr_pp_1 = numpy.round(numpy.linspace(0.879, 0.921, na), 3)
+        numpy.random.shuffle(pr_pp_1)
         prob_remain = [pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1]
         ns=3
 
@@ -277,18 +299,18 @@ def run_ns_learning_combination(params):
     if tt == 'structured':
         prob_remain = numpy.round(numpy.linspace(0.1 / ns, 0.1 / ns, na), 2)
     elif tt == 'clinical':
-        pr_ss_0 = np.round(np.linspace(0.657, 0.762, na), 3)
-        np.random.shuffle(pr_ss_0)
-        pr_sp_0 = np.round(np.linspace(0.201, 0.287, na), 3)
-        np.random.shuffle(pr_sp_0)
-        pr_pp_0 = np.round(np.linspace(0.882, 0.922, na), 3)
-        np.random.shuffle(pr_pp_0)
-        pr_ss_1 = np.round(np.linspace(0.806, 0.869, na), 3)
-        np.random.shuffle(pr_ss_1)
-        pr_sp_1 = np.round(np.linspace(0.115, 0.171, na), 3)
-        np.random.shuffle(pr_sp_1)
-        pr_pp_1 = np.round(np.linspace(0.879, 0.921, na), 3)
-        np.random.shuffle(pr_pp_1)
+        pr_ss_0 = numpy.round(numpy.linspace(0.657, 0.762, na), 3)
+        numpy.random.shuffle(pr_ss_0)
+        pr_sp_0 = numpy.round(numpy.linspace(0.201, 0.287, na), 3)
+        numpy.random.shuffle(pr_sp_0)
+        pr_pp_0 = numpy.round(numpy.linspace(0.882, 0.922, na), 3)
+        numpy.random.shuffle(pr_pp_0)
+        pr_ss_1 = numpy.round(numpy.linspace(0.806, 0.869, na), 3)
+        numpy.random.shuffle(pr_ss_1)
+        pr_sp_1 = numpy.round(numpy.linspace(0.115, 0.171, na), 3)
+        numpy.random.shuffle(pr_sp_1)
+        pr_pp_1 = numpy.round(numpy.linspace(0.879, 0.921, na), 3)
+        numpy.random.shuffle(pr_pp_1)
         prob_remain = [pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1]
         ns=3
 
@@ -312,18 +334,18 @@ def run_inf_learning_combination(params):
     if tt == 'structured':
         prob_remain = numpy.round(numpy.linspace(0.1 / ns, 0.1 / ns, na), 2)
     elif tt == 'clinical':
-        pr_ss_0 = np.round(np.linspace(0.657, 0.762, na), 3)
-        np.random.shuffle(pr_ss_0)
-        pr_sp_0 = np.round(np.linspace(0.201, 0.287, na), 3)
-        np.random.shuffle(pr_sp_0)
-        pr_pp_0 = np.round(np.linspace(0.882, 0.922, na), 3)
-        np.random.shuffle(pr_pp_0)
-        pr_ss_1 = np.round(np.linspace(0.806, 0.869, na), 3)
-        np.random.shuffle(pr_ss_1)
-        pr_sp_1 = np.round(np.linspace(0.115, 0.171, na), 3)
-        np.random.shuffle(pr_sp_1)
-        pr_pp_1 = np.round(np.linspace(0.879, 0.921, na), 3)
-        np.random.shuffle(pr_pp_1)
+        pr_ss_0 = numpy.round(numpy.linspace(0.657, 0.762, na), 3)
+        numpy.random.shuffle(pr_ss_0)
+        pr_sp_0 = numpy.round(numpy.linspace(0.201, 0.287, na), 3)
+        numpy.random.shuffle(pr_sp_0)
+        pr_pp_0 = numpy.round(numpy.linspace(0.882, 0.922, na), 3)
+        numpy.random.shuffle(pr_pp_0)
+        pr_ss_1 = numpy.round(numpy.linspace(0.806, 0.869, na), 3)
+        numpy.random.shuffle(pr_ss_1)
+        pr_sp_1 = numpy.round(numpy.linspace(0.115, 0.171, na), 3)
+        numpy.random.shuffle(pr_sp_1)
+        pr_pp_1 = numpy.round(numpy.linspace(0.879, 0.921, na), 3)
+        numpy.random.shuffle(pr_pp_1)
         prob_remain = [pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1]
         ns=3
 
@@ -366,8 +388,8 @@ def compute_bounds(perf_ref, perf_lrn):
     """
     Computes regret and confidence bounds.
     """
-    avg_creg = np.mean(np.cumsum(np.sum(perf_ref - perf_lrn, axis=2), axis=1), axis=0)
-    std_creg = np.std(np.cumsum(np.sum(perf_ref - perf_lrn, axis=2), axis=1), axis=0)
+    avg_creg = numpy.mean(np.cumsum(np.sum(perf_ref - perf_lrn, axis=2), axis=1), axis=0)
+    std_creg = numpy.std(np.cumsum(np.sum(perf_ref - perf_lrn, axis=2), axis=1), axis=0)
     avg_reg = [avg_creg[k] / (k + 1) for k in range(len(avg_creg))]
     return avg_reg, avg_creg, (avg_creg - std_creg, avg_creg + std_creg)
 
@@ -376,8 +398,8 @@ def process_and_plot(prob_err, indx_err, perf_ref, perf_lrn, suffix, path, key_v
     """
     Processes data and generates all required plots for a given suffix.
     """
-    trn_err = np.mean(prob_err, axis=(0, 2))
-    wis_err = np.mean(indx_err, axis=(0, 2))
+    trn_err = numpy.mean(prob_err, axis=(0, 2))
+    wis_err = numpy.mean(indx_err, axis=(0, 2))
     reg, creg, bounds = compute_bounds(perf_ref, perf_lrn)
 
     plot_data(trn_err, 'Episodes', 'Max Transition Error', f'{path}per_{suffix}_{key_value}.png')

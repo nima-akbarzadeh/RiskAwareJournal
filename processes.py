@@ -1,4 +1,3 @@
-import random
 import numpy as np
 
 
@@ -68,7 +67,7 @@ def process_riskaware_whittle(raWhittle, n_iterations, n_steps, n_states, n_arms
         lifted = np.zeros(n_arms, dtype=np.int32)
         states = initial_states.copy()
         for t in range(n_steps):
-            actions = rWhittle.take_action(n_choices, lifted, states, t)
+            actions = raWhittle.take_action(n_choices, lifted, states, t)
             for a in range(n_arms):
                 totalrewards[a, k] += rewards[states[a], a]
                 lifted[a] = max(0, min(raWhittle.n_augment[a]-1, lifted[a] + states[a]))
@@ -227,7 +226,7 @@ def process_inf_riskaware_whittle_learning(raWhittle, raWhittle_learn, n_iterati
     objectives = np.zeros((n_arms, n_iterations))
     learn_totalrewards = np.zeros((n_arms, n_iterations))
     learn_objectives = np.zeros((n_arms, n_iterations))
-    counts = np.zeros((n_states, n_states, 2, n_steps, n_arms))
+    counts = np.zeros((n_states, n_states, 2, n_arms))
     for k in range(n_iterations):
         lifted = np.zeros(n_arms, dtype=np.int32)
         states = initial_states.copy()

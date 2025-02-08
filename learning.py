@@ -261,8 +261,7 @@ def multiprocess_ns_learn_LRAPTS(
 
 
 def process_inf_learn_LRAPTS_iteration(i, l_episodes, n_episodes, discount, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, 
-                                       true_rew, true_dyn, initial_states, u_type, u_order, PlanW, w_range, w_trials):
-
+                                       true_rew, true_dyn, initial_states, u_type, u_order, PlanW, w_range, w_trials): 
     # Initialization
     print(f"Iteration {i} starts ...")
     start_time = time.time()
@@ -287,9 +286,9 @@ def process_inf_learn_LRAPTS_iteration(i, l_episodes, n_episodes, discount, n_st
 
     for l in range(l_episodes):
         plan_totalrewards, plan_objectives, learn_totalrewards, learn_objectives, cnts = \
-            process_riskaware_whittle_learning(PlanW, LearnW, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order)
+            process_inf_riskaware_whittle_learning(PlanW, LearnW, n_episodes, discount, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order)
         counts += cnts
-
+        
         # Update transitions
         est_transitions = np.zeros((n_states, n_states, 2, n_arms))
         for a in range(n_arms):
@@ -322,7 +321,7 @@ def multiprocess_inf_learn_LRAPTS(
 
     # Define arguments for each iteration
     args = [
-        (i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order, PlanW, w_range, w_trials) 
+        (i, l_episodes, n_episodes, discount, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order, PlanW, w_range, w_trials) 
         for i in range(n_iterations)
     ]
 

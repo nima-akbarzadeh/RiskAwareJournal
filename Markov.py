@@ -35,7 +35,7 @@ def rewards_ns(discount, time_horizon, num_arms, num_states):
     for t in range(time_horizon):
         for a in range(num_arms):
             vals[:, t, a] = (discount**t) * (np.linspace(0, num_states-1, num=num_states)) / (num_states-1)
-    return np.round((1 - discount) * vals / (1 - discount ** time_horizon), 2)
+    return np.round((1 - discount) * vals / (1 - discount ** time_horizon), 3)
 
 
 def ceil_to_decimals(arr, decimals):
