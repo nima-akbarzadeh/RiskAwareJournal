@@ -2,7 +2,7 @@
 #SBATCH --mail-user=nima.akbarzadeh@mail.mcgill.ca
 #SBATCH --account=def-adulyasa
 #SBATCH --mem-per-cpu=4G
-#SBATCH --cpus-per-task=25
+#SBATCH --cpus-per-task=21
 #SBATCH --output=~/projects/def-adulyasa/mcnima/RiskAwareJournal/output.txt
 #SBATCH --time=03:00:00
 
