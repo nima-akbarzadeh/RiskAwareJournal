@@ -1,5 +1,5 @@
 import os
-from utils import *
+from utils_u import *
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -10,10 +10,10 @@ def main():
         'n_steps': [100],
         'n_states': [3],
         'n_augmnt': [10],
-        'n_arms': [3],
-        'transition_type': ['structured'], # clinical
-        'utility_functions': [(3, 16)],
-        'thresholds': [0.5],
+        'n_arms': [10],
+        'transition_type': ['clinical', 'structured'], # clinical, structured
+        'utility_functions': [(2, 4), (3, 16)],
+        'thresholds': [0.2, 0.5],
         'arm_choices': [1]
     }
 

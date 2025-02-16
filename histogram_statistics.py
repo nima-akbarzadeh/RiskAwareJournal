@@ -4,24 +4,26 @@ import pandas as pd
 
 if __name__ == '__main__':
 
-    base_path = './planning-finite'
-    file_name = 'res.xlsx'
+    base_path = './planning-infinite'
+    file_name = 'res_inf.xlsx'
     df = pd.read_excel(f'{base_path}/{file_name}')
-    target_labels = ['MEAN-Ri_obj_riskaware_to_neutral', 'MEAN-Ri_rew_neutral_to_riskaware'] 
+    print(df.keys())
+    target_labels = ['RI_Obj_RiskAware_to_Neutral'] 
     
     for target_label in target_labels:
-        y = df[target_label]
+        # y = df[target_label]
+        y = df[df[target_label] <= 400][target_label]
 
         print(f'Mean = {y.mean()}')
-        min_val = df[target_label].min()
+        min_val = y.min()
         print(f'Min = {min_val}')
-        max_val = df[target_label].max()
+        max_val = y.max()
         print(f'Max = {max_val}')
         print(f"Portion below zero: {sum(y.values < 0)/len(y)}")
 
         # Plot the histogram
         bins = list(np.linspace(min_val, max_val, num=15))
-        plt.hist(df[target_label], bins=bins, edgecolor='black')
+        plt.hist(y, bins=bins, edgecolor='black')
 
         # Format the x-axis to have one decimal place
         plt.gca().xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{x:.1f}'))
@@ -31,7 +33,7 @@ if __name__ == '__main__':
         plt.yticks(fontsize=14, fontweight='bold')
 
         # Reduce the whitespace between bins
-        plt.hist(df[target_label], bins=bins, edgecolor='black', linewidth=0.5, color='blue')
+        plt.hist(y, bins=bins, edgecolor='black', linewidth=0.5, color='blue')
 
         plt.grid(axis='y')
         plt.xlabel('Relative Improvement', fontsize=14, fontweight='bold')
