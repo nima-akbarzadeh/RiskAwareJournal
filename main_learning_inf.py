@@ -6,20 +6,20 @@ warnings.filterwarnings("ignore")
 
 def main():
     param_sets = {
-        'discount_factors': [0.9],
+        'discount_factors': [0.95],
         'n_steps': [100],
         'n_states': [3],
         'n_augmnt': [10],
-        'n_arms': [10],
+        'n_arms': [5],
         'transition_type': ['clinical', 'structured'], # clinical, structured
         'utility_functions': [(2, 4), (3, 16)],
         'thresholds': [0.2, 0.5],
         'arm_choices': [1]
     }
 
-    learning_episodes = 200
-    n_averaging_episodes = 5
-    n_iterations = 10
+    learning_episodes = 500
+    n_averaging_episodes = 1
+    n_iterations = 20
 
     save_data = True
     PATH = f'./learning-infinite-{learning_episodes}-{n_averaging_episodes}-{n_iterations}/'

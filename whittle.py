@@ -532,14 +532,13 @@ class WhittleInf:
         return np.all(np.abs(mat1 - mat2) < tol)
 
     def indexability_check(self, arm_indices, nxt_pol, ref_pol, penalty):
-        for t in range(self.horizon):
-            if np.any((ref_pol == 0) & (nxt_pol == 1)):
-                print("Neutral - Not indexable!")
-                return False, np.zeros((self.num_x, self.horizon))
-            else:
-                elements = np.argwhere((ref_pol == 1) & (nxt_pol == 0))
-                for e in elements:
-                    arm_indices[e] = penalty
+        if np.any((ref_pol == 0) & (nxt_pol == 1)):
+            print("Neutral - Not indexable!")
+            return False, np.zeros((self.num_x, self.horizon))
+        else:
+            elements = np.argwhere((ref_pol == 1) & (nxt_pol == 0))
+            for e in elements:
+                arm_indices[e] = penalty
         return True, arm_indices
 
     def binary_search(self, lower_bound, upper_bound, l_steps):
@@ -587,8 +586,8 @@ class WhittleInf:
             V_prev = np.copy(V)
             for x in range(self.num_x):
                 # Calculate Q-values for both actions
-                Q[x, 0] = self.reward[x, arm] + self.discount * np.dot(V, self.transition[x, :, 0, arm])
-                Q[x, 1] = self.reward[x, arm] - penalty / self.horizon + self.discount * np.dot(V, self.transition[x, :, 1, arm])
+                Q[x, 0] = self.reward[x, arm] + ((1 - self.discount) / (1 - self.discount ** self.horizon)) * self.discount * np.dot(V, self.transition[x, :, 0, arm])
+                Q[x, 1] = self.reward[x, arm] - penalty / self.horizon + ((1 - self.discount) / (1 - self.discount ** self.horizon)) * self.discount * np.dot(V, self.transition[x, :, 1, arm])
 
                 # Optimal action and value
                 pi[x] = np.argmax(Q[x, :])
@@ -626,10 +625,10 @@ class RiskAwareWhittleInf:
         self.num_x = num_states[0]
         self.num_s = num_states[1]
         self.num_z = num_states[2]
-        self.s_cutting_points = np.linspace(0, horizon, self.num_s+1)
+        self.s_cutting_points = np.linspace(0, 1, self.num_s+1)
         self.z_cutting_points = np.linspace(0, 1, self.num_z+1)
-        self.all_total_rewards = [np.median(self.s_cutting_points[i:i + 2]) for i in range(len(self.s_cutting_points) - 1)]
-        self.all_total_discnts = [np.median(self.z_cutting_points[i:i + 2]) for i in range(len(self.z_cutting_points) - 1)]
+        self.all_total_rewards = [np.round(np.median(self.s_cutting_points[i:i + 2]), 3) for i in range(len(self.s_cutting_points) - 1)]
+        self.all_total_discnts = [np.round(np.median(self.z_cutting_points[i:i + 2]), 3) for i in range(len(self.z_cutting_points) - 1)]
         self.num_a = num_arms
         self.rewards = rewards
         self.transition = transition
@@ -718,8 +717,7 @@ class RiskAwareWhittleInf:
         # Value function initialization
         V = np.zeros((self.n_augment[arm], self.num_z, self.num_x), dtype=np.float32)
         for y in range(self.n_augment[arm]):
-            for z in range(self.num_z):
-                V[y, z, :] = self.all_utility_values[arm][y] * (1/self.all_total_discnts[z]) * np.ones(self.num_x)
+            V[y, :, :] = self.all_utility_values[arm][y] * np.ones([self.num_z, self.num_x])
 
         # State-action value function
         Q = np.zeros((self.n_augment[arm], self.num_z, self.num_x, 2), dtype=np.float32)
@@ -735,12 +733,12 @@ class RiskAwareWhittleInf:
 
             # Loop over all dimensions of the state space
             for x in range(self.num_x):
-                for y in range(self.n_augment[arm]):
-                    for z in range(self.num_z):
-                        nxt_y = self.get_reward_partition(self.all_total_rewards[y] + z * self.rewards[x, arm])
+                for z in range(self.num_z):
+                    for y in range(self.n_augment[arm]):
+                        nxt_y = self.get_reward_partition(self.all_total_rewards[y] + self.all_total_discnts[z] * self.rewards[x, arm])
                         nxt_z = self.get_discnt_partition(self.all_total_discnts[z] * self.discount)
-                        Q[y, z, x, 0] = self.discount * np.dot(V[nxt_y, nxt_z, :], self.transition[x, :, 0, arm])
-                        Q[y, z, x, 1] = - penalty + self.discount * np.dot(V[nxt_y, nxt_z, :], self.transition[x, :, 1, arm])
+                        Q[y, z, x, 0] = np.dot(V[nxt_y, nxt_z, :], self.transition[x, :, 0, arm])
+                        Q[y, z, x, 1] = - penalty / self.horizon + np.dot(V[nxt_y, nxt_z, :], self.transition[x, :, 1, arm])
 
                         # Get the value function and the policy
                         pi[y, z, x] = np.argmax(Q[y, z, x, :])

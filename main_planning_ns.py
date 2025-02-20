@@ -1,7 +1,7 @@
 import os
 import numpy
 import pandas as pd
-from utils import *
+from utils_u import *
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -9,22 +9,22 @@ def main():
 
     # Combinations
     param_sets = {
-        'discount_factors': [0.9, 0.95],
-        'n_steps': [3, 4, 5],
+        'discount_factors': [0.67, 0.75, 0.8, 0.9, 0.99],
+        'n_steps': [3, 4, 5, 10, 20],
         'n_states': [2, 3, 4],
         'n_augmnt': [10],
         'n_arms_coefficient': [3, 4, 5],
-        'utility_functions': [(1, 0), (2, 4), (2, 16), (3, 4), (3, 16)],
+        'utility_functions': [(1, 0)],
         'thresholds': [np.round(0.1 * n, 1) for n in range(1, 10)],
         'fraction_of_arms': [0.1, 0.3, 0.5]
     }
 
     # Iterations
-    n_iterations = 100
+    n_iterations = 10
 
     # Saving the results
     save_flag = True
-    PATH = f'./planning-nsfinite/'
+    PATH = f'./planning-nsfinite-Tset/'
     if not os.path.exists(PATH):
         os.makedirs(PATH)
     

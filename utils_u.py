@@ -79,16 +79,16 @@ def run_a_planning_combination(params):
         results[name+'_obj'] = numpy.mean(obj)
         results[name+'_rew'] = numpy.mean(rew)
 
-    improve_obj_rn = 100 * (results['RiskAware_obj'] - results['Neutral_obj']) / results['Neutral_obj']
-    improve_obj_ru = 100 * (results['RiskAware_obj'] - results['RewUtility_obj']) / results['RewUtility_obj']
-    improve_obj_un = 100 * (results['RewUtility_obj'] - results['Neutral_obj']) / results['Neutral_obj']
+    improve_obj_rn = 100 * (results['RiskAware_obj'] - results['Neutral_obj']) / results['Neutral_obj'] if results['Neutral_obj'] != 0 else 0
+    improve_obj_ru = 100 * (results['RiskAware_obj'] - results['RewUtility_obj']) / results['RewUtility_obj'] if results['RewUtility_obj'] != 0 else 0
+    improve_obj_un = 100 * (results['RewUtility_obj'] - results['Neutral_obj']) / results['Neutral_obj'] if results['Neutral_obj'] != 0 else 0
 
     diff_obj_rn = na * (results['RiskAware_obj'] - results['Neutral_obj'])
     diff_obj_ru = na * (results['RiskAware_obj'] - results['RewUtility_obj'])
     diff_obj_un = na * (results['RewUtility_obj'] - results['Neutral_obj'])
 
-    improve_rew_nr = 100 * (results['Neutral_rew'] - results['RiskAware_rew']) / results['RiskAware_rew']
-    improve_rew_nu = 100 * (results['Neutral_rew'] - results['RewUtility_rew']) / results['RewUtility_rew']
+    improve_rew_nr = 100 * (results['Neutral_rew'] - results['RiskAware_rew']) / results['RiskAware_rew'] if results['RiskAware_rew'] != 0 else 0
+    improve_rew_nu = 100 * (results['Neutral_rew'] - results['RewUtility_rew']) / results['RewUtility_rew'] if results['RewUtility_rew'] != 0 else 0
 
     diff_rew_nr = na * (results['Neutral_rew'] - results['RiskAware_rew'])
     diff_rew_nu = na * (results['Neutral_rew'] - results['RewUtility_rew'])
@@ -102,15 +102,20 @@ def run_multiple_ns_planning_combinations(param_list):
     num_cpus = cpu_count()-1
     print(f"Using {num_cpus} CPUs")
     
-    eval_keys = ['Neutral_Obj', 'RiskAware_Obj', 'RI_Obj_RiskAware_to_Neutral', 'DF_Obj_RiskAware_to_Neutral', 'Neutral_Rew', 'RiskAware_Rew', 'RI_Rew_RiskAware_to_Neutral', 'DF_Rew_RiskAware_to_Neutral']
+    eval_keys = ['Neutral_Obj', 'RewUtility_Obj', 'RiskAware_Obj',
+                 'RI_Obj_RiskAware_to_Neutral', 'RI_Obj_RiskAware_to_RewUtility', 'RI_Obj_RewUtility_to_Neutral',
+                 'DF_Obj_RiskAware_to_Neutral', 'DF_Obj_RiskAware_to_RewUtility', 'DF_Obj_RewUtility_to_Neutral',
+                 'Neutral_Rew', 'RewUtility_Rew', 'RiskAware_Rew', 
+                 'RI_Rew_Neutral_to_RiskAware', 'RI_Rew_Neutral_to_RewUtility',
+                 'DF_Rew_Neutral_to_RiskAware', 'DF_Rew_Neutral_to_RewUtility']
     results = {key: {} for key in eval_keys}
     averages = {key: {} for key in eval_keys}
     total = len(param_list)
     with Pool(num_cpus) as pool:
         # Use imap to get results as they complete
         for count, output in enumerate(pool.imap_unordered(run_a_ns_planning_combination, param_list), 1):
-            key_value, raavg_n, raavg_ra, improve_obj_rn, diff_obj_rn, travg_n, travg_ra, improve_rew_nr, diff_rew_nr = output
-            for i, value in enumerate([raavg_n, raavg_ra, improve_obj_rn, diff_obj_rn, travg_n, travg_ra, improve_rew_nr, diff_rew_nr]):
+            key_value, raavg_n, raavg_ru, raavg_ra, improve_obj_rn, improve_obj_ru, improve_obj_un, diff_obj_rn, diff_obj_ru, diff_obj_un, travg_n, travg_ru, travg_ra, improve_rew_nr, improve_rew_nu, diff_rew_nr, diff_rew_nu = output
+            for i, value in enumerate([raavg_n, raavg_ru, raavg_ra, improve_obj_rn, improve_obj_ru, improve_obj_un, diff_obj_rn, diff_obj_ru, diff_obj_un, travg_n, travg_ru, travg_ra, improve_rew_nr, improve_rew_nu, diff_rew_nr, diff_rew_nu]):
                 results[eval_keys[i]][key_value] = value
 
             print(f"{count} / {total}: {key_value} ---> MEAN-Rel-RN: {improve_obj_rn}")
@@ -125,43 +130,60 @@ def run_multiple_ns_planning_combinations(param_list):
 
 
 def run_a_ns_planning_combination(params):
+    import time
+    start_time = time.time()
     df, nt, ns, ng, nc, ut, th, fr, n_iterations, save_flag, PATH = params
     key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nc{nc}_ut{ut}_th{th}_fr{fr}'
     na = nc * ns
 
-    rew_ns_vals = rewards_ns(df, nt, na, ns)
+    rew_vals = rewards_ns(df, nt, na, ns)
+    rew_utility_vals = rewards_ns_utility(df, nt, na, ns, th, ut[0], ut[1])
     prob_remain = numpy.round(numpy.linspace(0.1 / ns, 1 / ns, na), 2)
     markov_matrix = get_transitions(na, ns, prob_remain, 'structured')
 
-    Neutral_Whittle = WhittleNS(ns, na, rew_ns_vals, markov_matrix, nt)
-    Neutral_Whittle.get_indices(2*nt, nt*ns*na)
+    Neutral_Whittle = WhittleNS(ns, na, rew_vals, markov_matrix, nt)
+    Neutral_Whittle.get_indices(2*ng, ng*ns*na)
 
-    RiskAware_Whittle = RiskAwareWhittleNS([ns, ng], na, rew_ns_vals, markov_matrix, nt, ut[0], ut[1], th)
-    RiskAware_Whittle.get_indices(2*nt, nt*ns*na)
+    Utility_Whittle = WhittleNS(ns, na, rew_utility_vals, markov_matrix, nt)
+    Utility_Whittle.get_indices(2*ng, ng*ns*na)
+
+    RiskAware_Whittle = RiskAwareWhittleNS([ns, ng], na, rew_vals, markov_matrix, nt, ut[0], ut[1], th)
+    RiskAware_Whittle.get_indices(2*ng, ng*ns*na)
 
     nch = max(1, int(round(fr * na)))
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
 
     processes = [
         ("Neutral", lambda *args: process_ns_neutral_whittle(Neutral_Whittle, *args)),
+        ("RewUtility", lambda *args: process_ns_neutral_whittle(Utility_Whittle, *args)),
         ("RiskAware", lambda *args: process_ns_riskaware_whittle(RiskAware_Whittle, *args))
     ]
 
     results = {}
     for name, process in processes:
-        rew, obj = process(n_iterations, nt, ns, na, nch, th, rew_ns_vals, markov_matrix, initial_states, ut[0], ut[1])
+        rew, obj = process(n_iterations, nt, ns, na, nch, th, rew_vals, markov_matrix, initial_states, ut[0], ut[1])
         if save_flag:
             joblib.dump([rew, obj], f"{PATH}{key_value}_{name}.joblib")
         results[name+'_obj'] = numpy.mean(obj)
         results[name+'_rew'] = numpy.mean(rew)
 
-    improve_obj_rn = 100 * (results['RiskAware_obj'] - results['Neutral_obj']) / results['Neutral_obj']
-    diff_obj_rn = na * results['RiskAware_obj'] - results['Neutral_obj']
+    improve_obj_rn = 100 * (results['RiskAware_obj'] - results['Neutral_obj']) / results['Neutral_obj'] if results['Neutral_obj'] != 0 else 0
+    improve_obj_ru = 100 * (results['RiskAware_obj'] - results['RewUtility_obj']) / results['RewUtility_obj'] if results['RewUtility_obj'] != 0 else 0
+    improve_obj_un = 100 * (results['RewUtility_obj'] - results['Neutral_obj']) / results['Neutral_obj'] if results['Neutral_obj'] != 0 else 0
 
-    improve_rew_nr = 100 * (results['Neutral_rew'] - results['RiskAware_rew']) / results['RiskAware_rew']
-    diff_rew_nr = na * results['Neutral_rew'] - results['RiskAware_rew']
+    diff_obj_rn = na * (results['RiskAware_obj'] - results['Neutral_obj'])
+    diff_obj_ru = na * (results['RiskAware_obj'] - results['RewUtility_obj'])
+    diff_obj_un = na * (results['RewUtility_obj'] - results['Neutral_obj'])
 
-    return key_value, results["Neutral_obj"], results["RiskAware_obj"], improve_obj_rn, diff_obj_rn, results["Neutral_rew"], results["RiskAware_rew"], improve_rew_nr, diff_rew_nr
+    improve_rew_nr = 100 * (results['Neutral_rew'] - results['RiskAware_rew']) / results['RiskAware_rew'] if results['RiskAware_rew'] != 0 else 0
+    improve_rew_nu = 100 * (results['Neutral_rew'] - results['RewUtility_rew']) / results['RewUtility_rew'] if results['RewUtility_rew'] != 0 else 0
+
+    diff_rew_nr = na * (results['Neutral_rew'] - results['RiskAware_rew'])
+    diff_rew_nu = na * (results['Neutral_rew'] - results['RewUtility_rew'])
+
+    print(f"- Duration of this round = {time.time() - start_time}")
+
+    return key_value, results["Neutral_obj"], results["RewUtility_obj"], results["RiskAware_obj"], improve_obj_rn, improve_obj_ru, improve_obj_un, diff_obj_rn, diff_obj_ru, diff_obj_un, results["Neutral_rew"], results["RewUtility_rew"], results["RiskAware_rew"], improve_rew_nr, improve_rew_nu, diff_rew_nr, diff_rew_nu
 
 
 def run_multiple_inf_planning_combinations(param_list):
@@ -207,8 +229,8 @@ def run_a_inf_planning_combination(params):
     key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nc{nc}_ut{ut}_th{th}_fr{fr}'
     na = nc * ns
 
-    rew_vals = rewards(nt, na, ns)
-    rew_utility_vals = rewards_utility(nt, na, ns, th, ut[0], ut[1])
+    rew_vals = rewards_inf(na, ns)
+    rew_utility_vals = rewards_inf_utility(na, ns, th, ut[0], ut[1])
     prob_remain = numpy.round(numpy.linspace(0.1 / ns, 1 / ns, na), 2)
     markov_matrix = get_transitions(na, ns, prob_remain, 'structured')
 
@@ -238,16 +260,16 @@ def run_a_inf_planning_combination(params):
         results[name+'_obj'] = numpy.mean(obj)
         results[name+'_rew'] = numpy.mean(rew)
 
-    improve_obj_rn = 100 * (results['RiskAware_obj'] - results['Neutral_obj']) / results['Neutral_obj']
-    improve_obj_ru = 100 * (results['RiskAware_obj'] - results['RewUtility_obj']) / results['RewUtility_obj']
-    improve_obj_un = 100 * (results['RewUtility_obj'] - results['Neutral_obj']) / results['Neutral_obj']
+    improve_obj_rn = 100 * (results['RiskAware_obj'] - results['Neutral_obj']) / results['Neutral_obj'] if results['Neutral_obj'] != 0 else 0
+    improve_obj_ru = 100 * (results['RiskAware_obj'] - results['RewUtility_obj']) / results['RewUtility_obj'] if results['RewUtility_obj'] != 0 else 0
+    improve_obj_un = 100 * (results['RewUtility_obj'] - results['Neutral_obj']) / results['Neutral_obj'] if results['Neutral_obj'] != 0 else 0
 
     diff_obj_rn = na * (results['RiskAware_obj'] - results['Neutral_obj'])
     diff_obj_ru = na * (results['RiskAware_obj'] - results['RewUtility_obj'])
     diff_obj_un = na * (results['RewUtility_obj'] - results['Neutral_obj'])
 
-    improve_rew_nr = 100 * (results['Neutral_rew'] - results['RiskAware_rew']) / results['RiskAware_rew']
-    improve_rew_nu = 100 * (results['Neutral_rew'] - results['RewUtility_rew']) / results['RewUtility_rew']
+    improve_rew_nr = 100 * (results['Neutral_rew'] - results['RiskAware_rew']) / results['RiskAware_rew'] if results['RiskAware_rew'] != 0 else 0
+    improve_rew_nu = 100 * (results['Neutral_rew'] - results['RewUtility_rew']) / results['RewUtility_rew'] if results['RewUtility_rew'] != 0 else 0
 
     diff_rew_nr = na * (results['Neutral_rew'] - results['RiskAware_rew'])
     diff_rew_nu = na * (results['Neutral_rew'] - results['RewUtility_rew'])
@@ -429,3 +451,12 @@ def process_and_plot(prob_err, indx_err, perf_ref, perf_lrn, suffix, path, key_v
     plot_data(creg, 'Episodes', 'Regret', f'{path}cumregbounds_{suffix}_{key_value}.png', fill_bounds=bounds)
     plot_data(reg, 'Episodes', 'Regret/K', f'{path}reg_{suffix}_{key_value}.png')
 
+
+def inverse_utility(U, threshold, u_type, u_order):
+    if u_type == 1:
+        return threshold  # CE is the quantile at expected U
+    elif u_type == 2:
+        return threshold - (threshold**u_order * (1 - U)**u_order)**(1/u_order)
+    else:
+        return threshold + (1/u_order) * np.log((1 + np.exp(-u_order * (1 - threshold))) / U - 1)
+    
