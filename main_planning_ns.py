@@ -9,8 +9,8 @@ def main():
 
     # Combinations
     param_sets = {
-        'discount_factors': [0.67, 0.75, 0.8, 0.9, 0.99],
-        'n_steps': [3, 4, 5, 10, 20],
+        'discount_factors': [0.99],
+        'n_steps': [3, 4, 5, 10],
         'n_states': [2, 3, 4],
         'n_augmnt': [10],
         'n_arms_coefficient': [3, 4, 5],
@@ -20,11 +20,11 @@ def main():
     }
 
     # Iterations
-    n_iterations = 10
+    n_iterations = 20
 
     # Saving the results
     save_flag = True
-    PATH = f'./planning-nsfinite-Tset/'
+    PATH = f'./planning-nsfinite-dis99/'
     if not os.path.exists(PATH):
         os.makedirs(PATH)
     

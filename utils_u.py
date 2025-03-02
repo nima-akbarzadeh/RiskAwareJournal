@@ -361,8 +361,8 @@ def run_ns_learning_combination(params):
     rew_vals = rewards_ns(df, nt, na, ns)
     markov_matrix = get_transitions(na, ns, prob_remain, tt)
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
-    w_range = nt
-    w_trials = nt*ns
+    w_range = ng
+    w_trials = ng*ns
 
     prob_err_lr, indx_err_lr, _, obj_lr, _, obj_r = multiprocess_ns_learn_LRAPTS(
         n_iterations, l_episodes, n_episodes, nt, ns, ng, na, nc, th, rew_vals, markov_matrix, initial_states, ut[0], ut[1], 

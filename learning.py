@@ -92,8 +92,8 @@ def multiprocess_learn_LRAPTS(
     return all_learn_transitionerrors, all_learn_indexerrors, all_learn_rewards, all_learn_objectives, all_plan_rewards, all_plan_objectives
 
 
-def process_learn_LRNPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order, 
-                                   PlanW, w_range, w_trials):
+def process_learn_LRNPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, 
+                                   true_rew, true_dyn, initial_states, u_type, u_order, PlanW, w_range, w_trials):
 
     # Initialization
     print(f"Iteration {i} starts ...")
@@ -311,8 +311,8 @@ def process_inf_learn_LRAPTS_iteration(i, l_episodes, n_episodes, discount, n_st
 
 
 def multiprocess_inf_learn_LRAPTS(
-        n_iterations, l_episodes, n_episodes, discount, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, true_rew, 
-        true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
+        n_iterations, l_episodes, n_episodes, discount, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, 
+        true_rew, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
         ):
     num_workers = cpu_count() - 1
 
