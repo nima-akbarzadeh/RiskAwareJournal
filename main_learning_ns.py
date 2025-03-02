@@ -10,7 +10,7 @@ def main():
         'n_steps': [5, 10],
         'n_states': [3],
         'n_augmnt': [10],
-        'n_arms': [10, 5],
+        'n_arms': [5],
         'transition_type': ['clinical', 'structured'], # clinical, structured
         'utility_functions': [(1, 0), (2, 4), (3, 16)],
         'thresholds': [0.5],

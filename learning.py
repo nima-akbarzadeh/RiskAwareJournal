@@ -238,7 +238,8 @@ def multiprocess_ns_learn_LRAPTS(
 
     # Define arguments for each iteration
     args = [
-        (i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order, PlanW, w_range, w_trials) 
+        (i, l_episodes, n_episodes, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, 
+         u_type, u_order, PlanW, w_range, w_trials) 
         for i in range(n_iterations)
     ]
 

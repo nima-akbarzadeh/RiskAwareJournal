@@ -154,7 +154,7 @@ def process_ns_riskaware_whittle_learning(raWhittle, raWhittle_learn, n_iteratio
     objectives = np.zeros((n_arms, n_iterations))
     learn_totalrewards = np.zeros((n_arms, n_iterations))
     learn_objectives = np.zeros((n_arms, n_iterations))
-    counts = np.zeros((n_states, n_states, 2, n_steps, n_arms))
+    counts = np.zeros((n_states, n_states, 2, n_arms))
     for k in range(n_iterations):
         lifted = np.zeros(n_arms, dtype=np.int32)
         states = initial_states.copy()
