@@ -391,10 +391,10 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
             results["plan_objectives"][t, a] = compute_utility(plan_totalrewards[a], threshold, u_type, u_order)
             results["learn_rewards"][t, a] = learn_totalrewards[a]
             results["learn_objectives"][t, a] = compute_utility(learn_totalrewards[a], threshold, u_type, u_order)
-            print(f"t={t}, a={a}, states={states[a]}, learn_states={learn_states[a]}")
-            print(f"t={t}, a={a}, plan_rew={true_rew[states[a], a]}, learn_rew={true_rew[learn_states[a], a]}, discount_val={discount_val}")
-            print(f"t={t}, a={a}, plan_rewards={results['plan_rewards'][t, a]}, learn_rewards={results['learn_rewards'][t, a]}")
-            print(f"t={t}, a={a}, plan_objective={results["plan_objectives"][t, a]}, learn_objective={results["learn_objectives"][t, a]}")
+            # print(f"t={t}, a={a}, states={states[a]}, learn_states={learn_states[a]}")
+            # print(f"t={t}, a={a}, plan_rew={true_rew[states[a], a]}, learn_rew={true_rew[learn_states[a], a]}, discount_val={discount_val}")
+            # print(f"t={t}, a={a}, plan_rewards={results['plan_rewards'][t, a]}, learn_rewards={results['learn_rewards'][t, a]}")
+            # print(f"t={t}, a={a}, plan_objective={results["plan_objectives"][t, a]}, learn_objective={results["learn_objectives"][t, a]}")
 
     print(f"Iteration {i} (TSDE) end with duration: {time.time() - start_time}")
     return results

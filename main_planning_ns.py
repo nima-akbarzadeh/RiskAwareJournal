@@ -55,7 +55,10 @@ def main():
         for th in param_sets['thresholds']
         for fr in param_sets['fraction_of_arms']
     ]
+    import time
+    start_time = time.time()
     results, averages = run_multiple_ns_planning_combinations(param_list)
+    print(f'Duration: {time.time() - start_time}')
 
     # Save results to Excel
     df1 = pd.DataFrame({f'MEAN-{key.capitalize()}': value for key, value in results.items()})
@@ -66,7 +69,7 @@ def main():
     df2.index.name = 'Key'
     df2.to_excel(f'{PATH}resavg_ns.xlsx')
 
-def combine_joblib_files(input_dir, output_filename="all_files.joblib"):
+def combine_joblib_files(input_dir, output_filename=PATH+"all_files.joblib"):
     """
     Combines multiple .joblib files from a specified directory into a single .joblib file.
 
@@ -81,10 +84,6 @@ def combine_joblib_files(input_dir, output_filename="all_files.joblib"):
     if not file_list:
         print(f"No .joblib files found in the directory: {input_dir}")
         return
-
-    print(f"Combining the following files into {output_filename}:")
-    for file_name in file_list:
-        print(file_name)
 
     # Load the data from each file
     data = {}

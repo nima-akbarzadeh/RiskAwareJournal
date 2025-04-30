@@ -743,7 +743,7 @@ class RiskAwareWhittleInf:
                         nxt_y = self.get_reward_partition(self.all_total_rewards[y] + self.all_total_discnts[z] * self.rewards[x, arm])
                         nxt_z = self.get_discnt_partition(self.all_total_discnts[z] * self.discount)
                         for a in range(2):
-                            Q[y, z, x, a] = - penalty * self.all_total_discnts[z] * a + np.dot(V[nxt_y, nxt_z, :], self.transition[x, :, a, arm])
+                            Q[y, z, x, a] = np.round(- penalty * self.all_total_discnts[z] * a + np.dot(V[nxt_y, nxt_z, :], self.transition[x, :, a, arm]), 3)
 
                         # Get the value function and the policy
                         pi[y, z, x] = np.argmax(Q[y, z, x, :])
