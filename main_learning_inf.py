@@ -5,29 +5,28 @@ warnings.filterwarnings("ignore")
 
 
 def main():
+    n_steps = 1000
+    discount = 0.99999
     param_sets = {
-        'discount_factors': [0.95],
-        'n_steps': [100],
-        'n_states': [3],
+        'discount_factors': [discount],
+        'n_steps': [n_steps],
+        'n_states': [3], # 3 for clinical.
         'n_augmnt': [10],
-        'n_arms': [5],
-        'transition_type': ['clinical', 'structured'], # clinical, structured
-        'utility_functions': [(2, 4), (3, 16)],
-        'thresholds': [0.2, 0.5],
+        'n_arms': [2, 3],
+        'transition_type': ['structured', 'clinical'], # structured, clinical
+        'utility_functions': [(3, 4), (3, 16)],
+        'thresholds': [0.1, 0.3, 0.5],
         'arm_choices': [1]
     }
-
-    learning_episodes = 500
-    n_averaging_episodes = 1
-    n_iterations = 20
+    n_iterations = 100
 
     save_data = True
-    PATH = f'./learning-infinite-{learning_episodes}-{n_averaging_episodes}-{n_iterations}/'
+    PATH = f'./learning-infinite-{discount}-{n_steps}-{n_iterations}-test2/'
     if not os.path.exists(PATH):
         os.makedirs(PATH)
 
     param_list = [
-        (df, nt, ns, ng, na, tt, ut, th, nc, learning_episodes, n_averaging_episodes, n_iterations, save_data, PATH)
+        (df, nt, ns, ng, na, tt, ut, th, nc, n_iterations, save_data, PATH)
         for df in param_sets['discount_factors']
         for nt in param_sets['n_steps']
         for ns in param_sets['n_states']

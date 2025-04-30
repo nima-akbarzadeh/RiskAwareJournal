@@ -240,7 +240,7 @@ def run_a_inf_planning_combination(params):
     Utility_Whittle = WhittleInf(ns, na, rew_utility_vals, markov_matrix, df, nt)
     Utility_Whittle.get_indices(2*ng, ng*ns*na)
 
-    RiskAware_Whittle = RiskAwareWhittleInf([ns, ng, ng], na, rew_vals, markov_matrix, df, nt, ut[0], ut[1], th)
+    RiskAware_Whittle = RiskAwareWhittleInf([ns, ng, ng], na, rew_vals, markov_matrix, df, ut[0], ut[1], th)
     RiskAware_Whittle.get_indices(2*ng, ng*ns*na)
 
     nch = max(1, int(round(fr * na)))
@@ -372,7 +372,7 @@ def run_ns_learning_combination(params):
 
 
 def run_inf_learning_combination(params):
-    df, nt, ns, ng, na, tt, ut, th, nc, l_episodes, n_episodes, n_iterations, save_data, PATH = params
+    df, nt, ns, ng, na, tt, ut, th, nc, n_iterations, save_data, PATH = params
 
     if tt == 'structured':
         prob_remain = numpy.round(numpy.linspace(0.1 / ns, 0.1 / ns, na), 2)
@@ -393,17 +393,17 @@ def run_inf_learning_combination(params):
         ns=3
 
     key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_na{na}_tt{tt}_ut{ut}_th{th}_nc{nc}'
-    rew_vals = rewards(nt, na, ns)
+    rew_vals = rewards_inf(na, ns)
     markov_matrix = get_transitions(na, ns, prob_remain, tt)
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
     w_range = ng
     w_trials = ng*ns
 
-    prob_err_lr, indx_err_lr, _, obj_lr, _, obj_n = multiprocess_inf_learn_LRAPTS(
-        n_iterations, l_episodes, n_episodes, df, nt, ns, ng, na, nc, th, rew_vals, markov_matrix, initial_states, ut[0], ut[1], 
+    prob_err_lr, indx_err_lr, rew_lr, obj_lr, rew_n, obj_n = multiprocess_inf_learn_LRAPTSDE(
+        n_iterations, df, nt, ns, ng, na, nc, th, rew_vals, markov_matrix, initial_states, ut[0], ut[1], 
         save_data, f'{PATH}inf_riskaware_{key_value}.joblib', w_range, w_trials
     )
-    process_and_plot(prob_err_lr, indx_err_lr, obj_n, obj_lr, 'ln', PATH, key_value)
+    process_and_plot(prob_err_lr, indx_err_lr, obj_n, obj_lr, 'lr', PATH, key_value)
 
 
 def plot_data(y_data, xlabel, ylabel, filename, x_data=None, ylim=None, linewidth=4, fill_bounds=None):
@@ -431,8 +431,8 @@ def compute_bounds(perf_ref, perf_lrn):
     """
     Computes regret and confidence bounds.
     """
-    avg_creg = numpy.mean(np.cumsum(np.sum(perf_ref - perf_lrn, axis=2), axis=1), axis=0)
-    std_creg = numpy.std(np.cumsum(np.sum(perf_ref - perf_lrn, axis=2), axis=1), axis=0)
+    avg_creg = numpy.mean(numpy.cumsum(numpy.sum(perf_ref - perf_lrn, axis=2), axis=1), axis=0)
+    std_creg = numpy.std(numpy.cumsum(numpy.sum(perf_ref - perf_lrn, axis=2), axis=1), axis=0)
     avg_reg = [avg_creg[k] / (k + 1) for k in range(len(avg_creg))]
     return avg_reg, avg_creg, (avg_creg - std_creg, avg_creg + std_creg)
 
