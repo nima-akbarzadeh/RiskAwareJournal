@@ -7,40 +7,58 @@ warnings.filterwarnings("ignore")
 def main():
     n_steps = 1000
     discount = 0.99999
-    param_sets = {
-        'discount_factors': [discount],
-        'n_steps': [n_steps],
-        'n_states': [3], # 3 for clinical.
-        'n_augmnt': [10],
-        'n_arms': [2, 3],
-        'transition_type': ['structured', 'clinical'], # structured, clinical
-        'utility_functions': [(3, 4), (3, 16)],
-        'thresholds': [0.1, 0.3, 0.5],
-        'arm_choices': [1]
-    }
     n_iterations = 100
+    
+    param_sets_list = [
+        {
+            'discount_factors': [discount],
+            'n_steps': [n_steps],
+            'n_states': [4, 5],
+            'n_augmnt': [10],
+            'n_arms': [3, 4, 5],
+            'transition_type': ['structured'],
+            'utility_functions': [(1, 0), (2, 4), (3, 16)],
+            'thresholds': [0.2, 0.5, 0.7],
+            'arm_choices': [1]
+        },
+        {
+            'discount_factors': [discount],
+            'n_steps': [n_steps],
+            'n_states': [3],
+            'n_augmnt': [10],
+            'n_arms': [3, 4, 5],
+            'transition_type': ['clinical', 'structured'],
+            'utility_functions': [(1, 0), (2, 4), (3, 16)],
+            'thresholds': [0.1, 0.3, 0.5],
+            'arm_choices': [1]
+        },
+    ]
 
     save_data = True
-    PATH = f'./learning-infinite-{discount}-{n_steps}-{n_iterations}-test2/'
+    PATH = f'./learning-infinite-{discount}-{n_steps}-{n_iterations}/'
     if not os.path.exists(PATH):
         os.makedirs(PATH)
 
-    param_list = [
-        (df, nt, ns, ng, na, tt, ut, th, nc, n_iterations, save_data, PATH)
-        for df in param_sets['discount_factors']
-        for nt in param_sets['n_steps']
-        for ns in param_sets['n_states']
-        for ng in param_sets['n_augmnt']
-        for na in param_sets['n_arms']
-        for tt in param_sets['transition_type']
-        for ut in param_sets['utility_functions']
-        for th in param_sets['thresholds']
-        for nc in param_sets['arm_choices']
-    ]
-    
-    for params in param_list:
-        print('='*50)
-        run_inf_learning_combination(params)
+    for param_sets in param_sets_list:
+        print("=" * 50)
+        print(f"Processing parameter set: {param_sets}") #Added to show the set being processed
+        param_list = product(
+            param_sets['discount_factors'],
+            param_sets['n_steps'],
+            param_sets['n_augmnt'],
+            param_sets['n_states'],
+            param_sets['n_arms'],
+            param_sets['transition_type'],
+            param_sets['utility_functions'],
+            param_sets['thresholds'],
+            param_sets['arm_choices'],
+            [n_iterations],
+            [save_data],
+            [PATH]
+        )
+        for params in param_list:
+            print('='*50)
+            run_inf_learning_combination(params)
 
 if __name__ == '__main__':
     main()
