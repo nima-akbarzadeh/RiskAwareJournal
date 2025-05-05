@@ -302,38 +302,16 @@ def run_learning_combination(params):
 
     key_value = f'nt{nt}_ns{ns}_na{na}_tt{tt}_ut{ut}_th{th}_nc{nc}'
     rew_vals = rewards(nt, na, ns)
-    rew_utility_vals = rewards_utility(nt, na, ns, th, ut[0], ut[1])
     markov_matrix = get_transitions(na, ns, prob_remain, tt)
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
     w_range = nt
     w_trials = nt*ns
 
-    prob_err_ln, indx_err_ln, _, obj_ln, _, obj_n = multiprocess_learn_LRNPTS(
-        n_iterations, l_episodes, n_episodes, nt, ns, na, nc, th, rew_vals, markov_matrix, initial_states, ut[0], ut[1], 
-        save_data, f'{PATH}neutral_{key_value}.joblib', w_range, w_trials
-    )
-    prob_err_lu, indx_err_lu, _, obj_lu, _, obj_u = multiprocess_learn_LRNPTS(
-        n_iterations, l_episodes, n_episodes, nt, ns, na, nc, th, rew_utility_vals, markov_matrix, initial_states, ut[0], ut[1], 
-        save_data, f'{PATH}rewutility_{key_value}.joblib', w_range, w_trials
-    )
     prob_err_lr, indx_err_lr, _, obj_lr, _, obj_r = multiprocess_learn_LRAPTS(
         n_iterations, l_episodes, n_episodes, nt, ns, na, nc, th, rew_vals, markov_matrix, initial_states, ut[0], ut[1], 
         save_data, f'{PATH}riskaware_{key_value}.joblib', w_range, w_trials
     )
-
-    process_and_plot(prob_err_ln, indx_err_ln, obj_n, obj_ln, 'ln', PATH, key_value)
-    process_and_plot(prob_err_lu, indx_err_lu, obj_u, obj_lu, 'lu', PATH, key_value)
     process_and_plot(prob_err_lr, indx_err_lr, obj_r, obj_lr, 'lr', PATH, key_value)
-
-    reg_lru, creg_lru, bounds_lru = compute_bounds(obj_r, obj_lu)
-    plot_data(creg_lru, 'Episodes', 'Regret', f'{PATH}cumreg_lru_{key_value}.png')
-    plot_data(creg_lru, 'Episodes', 'Regret', f'{PATH}cumregbounds_lru_{key_value}.png', fill_bounds=bounds_lru)
-    plot_data(reg_lru, 'Episodes', 'Regret/K', f'{PATH}reg_lru_{key_value}.png')
-
-    reg_lrn, creg_lrn, bounds_lrn = compute_bounds(obj_r, obj_ln)
-    plot_data(creg_lrn, 'Episodes', 'Regret', f'{PATH}cumreg_lrn_{key_value}.png')
-    plot_data(creg_lrn, 'Episodes', 'Regret', f'{PATH}cumregbounds_lrn_{key_value}.png', fill_bounds=bounds_lrn)
-    plot_data(reg_lrn, 'Episodes', 'Regret/K', f'{PATH}reg_lrn_{key_value}.png')
 
 
 def run_ns_learning_combination(params):
@@ -399,7 +377,7 @@ def run_inf_learning_combination(params):
     w_range = ng
     w_trials = ng*ns
 
-    prob_err_lr, indx_err_lr, rew_lr, obj_lr, rew_n, obj_n = multiprocess_inf_learn_LRAPTSDE(
+    prob_err_lr, indx_err_lr, _, obj_lr, _, obj_n = multiprocess_inf_learn_LRAPTSDE(
         n_iterations, df, nt, ns, ng, na, nc, th, rew_vals, markov_matrix, initial_states, ut[0], ut[1], 
         save_data, f'{PATH}inf_riskaware_{key_value}.joblib', w_range, w_trials
     )
@@ -423,7 +401,7 @@ def plot_data(y_data, xlabel, ylabel, filename, x_data=None, ylim=None, linewidt
     plt.xticks(fontsize=12, fontweight='bold')
     plt.yticks(fontsize=12, fontweight='bold')
     plt.grid(True)
-    plt.savefig(filename)
+    plt.savefig(filename, format="pdf")
     plt.close()
 
 
@@ -445,11 +423,11 @@ def process_and_plot(prob_err, indx_err, perf_ref, perf_lrn, suffix, path, key_v
     wis_err = numpy.mean(indx_err, axis=(0, 2))
     reg, creg, bounds = compute_bounds(perf_ref, perf_lrn)
 
-    plot_data(trn_err, 'Episodes', 'Max Transition Error', f'{path}per_{suffix}_{key_value}.png')
-    plot_data(wis_err, 'Episodes', 'Max WI Error', f'{path}wer_{suffix}_{key_value}.png')
-    plot_data(creg, 'Episodes', 'Regret', f'{path}cumreg_{suffix}_{key_value}.png')
-    plot_data(creg, 'Episodes', 'Regret', f'{path}cumregbounds_{suffix}_{key_value}.png', fill_bounds=bounds)
-    plot_data(reg, 'Episodes', 'Regret/K', f'{path}reg_{suffix}_{key_value}.png')
+    plot_data(trn_err, 'Episodes', 'Max Probability Error', f'{path}per_{suffix}_{key_value}.pdf')
+    plot_data(wis_err, 'Episodes', 'Max WI Error', f'{path}wer_{suffix}_{key_value}.pdf')
+    plot_data(creg, 'Episodes', 'Cumulative Regret', f'{path}cumreg_{suffix}_{key_value}.pdf')
+    plot_data(creg, 'Episodes', 'Cumulative Regret', f'{path}cumregbounds_{suffix}_{key_value}.pdf', fill_bounds=bounds)
+    plot_data(reg, 'Episodes', 'Regret', f'{path}reg_{suffix}_{key_value}.pdf')
 
 
 def inverse_utility(U, threshold, u_type, u_order):

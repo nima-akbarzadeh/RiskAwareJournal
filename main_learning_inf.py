@@ -45,8 +45,8 @@ def main():
         param_list = product(
             param_sets['discount_factors'],
             param_sets['n_steps'],
-            param_sets['n_augmnt'],
             param_sets['n_states'],
+            param_sets['n_augmnt'],
             param_sets['n_arms'],
             param_sets['transition_type'],
             param_sets['utility_functions'],
