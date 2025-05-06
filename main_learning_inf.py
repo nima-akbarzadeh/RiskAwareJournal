@@ -17,8 +17,8 @@ def main():
             'n_augmnt': [10],
             'n_arms': [3, 4, 5],
             'transition_type': ['structured'],
-            'utility_functions': [(1, 0), (2, 4), (3, 16)],
-            'thresholds': [0.2, 0.5, 0.7],
+            'utility_functions': [(3, 4), (3, 8), (3, 16)],
+            'thresholds': [0.7, 0.8, 0.9],
             'arm_choices': [1]
         },
         {
@@ -28,8 +28,8 @@ def main():
             'n_augmnt': [10],
             'n_arms': [3, 4, 5],
             'transition_type': ['clinical', 'structured'],
-            'utility_functions': [(1, 0), (2, 4), (3, 16)],
-            'thresholds': [0.1, 0.3, 0.5],
+            'utility_functions': [(3, 4), (3, 8), (3, 16)],
+            'thresholds': [0.7, 0.8, 0.9],
             'arm_choices': [1]
         },
     ]
