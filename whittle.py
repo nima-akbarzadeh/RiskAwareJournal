@@ -104,7 +104,7 @@ class Whittle:
         n_choices = np.minimum(n_choices, count_positive)
 
         max_index = np.max(current_indices)
-        candidates = np.where(current_indices == max_index)[0]
+        candidates = np.nonzero(current_indices == max_index)[0]
         chosen = np.random.choice(candidates, size=min(n_choices, len(candidates)), replace=False)
         action_vector = np.zeros_like(current_indices, dtype=int)
         action_vector[chosen] = 1
@@ -253,7 +253,7 @@ class RiskAwareWhittle:
         n_choices = np.minimum(n_choices, count_positive)
 
         max_index = np.max(current_indices)
-        candidates = np.where(current_indices == max_index)[0]
+        candidates = np.nonzero(current_indices == max_index)[0]
         chosen = np.random.choice(candidates, size=min(n_choices, len(candidates)), replace=False)
         action_vector = np.zeros_like(current_indices, dtype=int)
         action_vector[chosen] = 1
@@ -354,7 +354,7 @@ class WhittleNS:
         n_choices = np.minimum(n_choices, count_positive)
 
         max_index = np.max(current_indices)
-        candidates = np.where(current_indices == max_index)[0]
+        candidates = np.nonzero(current_indices == max_index)[0]
         chosen = np.random.choice(candidates, size=min(n_choices, len(candidates)), replace=False)
         action_vector = np.zeros_like(current_indices, dtype=int)
         action_vector[chosen] = 1
@@ -503,7 +503,7 @@ class RiskAwareWhittleNS:
         n_choices = np.minimum(n_choices, count_positive)
 
         max_index = np.max(current_indices)
-        candidates = np.where(current_indices == max_index)[0]
+        candidates = np.nonzero(current_indices == max_index)[0]
         chosen = np.random.choice(candidates, size=min(n_choices, len(candidates)), replace=False)
         action_vector = np.zeros_like(current_indices, dtype=int)
         action_vector[chosen] = 1
@@ -513,7 +513,7 @@ class RiskAwareWhittleNS:
 
 class WhittleInf:
 
-    def __init__(self, num_states: int, num_arms: int, reward, transition, discount):
+    def __init__(self, num_states: int, num_arms: int, reward, transition, discount=1):
         
         self.discount = discount
         self.num_x = num_states
@@ -582,7 +582,7 @@ class WhittleInf:
         diff = np.inf
         iteration = 0
         while diff > 1e-4 and iteration < 1000:
-            V_prev = np.copy(V)
+            v_prev = np.copy(V)
             for x in range(self.num_x):
                 # Calculate Q-values for both actions
                 for a in range(2):
@@ -591,7 +591,7 @@ class WhittleInf:
                 # Optimal action and value
                 pi[x] = np.argmax(Q[x, :])
                 V[x] = np.max(Q[x, :])
-            diff = np.max(np.abs(V - V_prev))
+            diff = np.max(np.abs(V - v_prev))
             iteration += 1
 
         return pi, V, Q
@@ -608,7 +608,7 @@ class WhittleInf:
         n_choices = np.minimum(n_choices, count_positive)
 
         max_index = np.max(current_indices)
-        candidates = np.where(current_indices == max_index)[0]
+        candidates = np.nonzero(current_indices == max_index)[0]
         chosen = np.random.choice(candidates, size=min(n_choices, len(candidates)), replace=False)
         action_vector = np.zeros_like(current_indices, dtype=int)
         action_vector[chosen] = 1
@@ -671,15 +671,15 @@ class RiskAwareWhittleInf:
             return True
         return False
 
-    def indexability_check(self, arm, arm_indices, nxt_pol, ref_pol, nxt_Q, ref_Q, penalty):
+    def indexability_check(self, arm, arm_indices, nxt_pol, ref_pol, nxt_q, ref_q, penalty):
         if np.any((ref_pol == 0) & (nxt_pol == 1)):
             print("="*50)
             print("RA - Not indexable!")
             elements = np.argwhere((ref_pol == 0) & (nxt_pol == 1))
             for e in elements:
                 print(f"e = {e}")
-                print(f"ref_Q[e[0], e[1], e[2]] = {ref_Q[e[0], e[1], e[2]]}")
-                print(f"nxt_Q[e[0], e[1], e[2]] = {nxt_Q[e[0], e[1], e[2]]}")
+                print(f"ref_q[e[0], e[1], e[2]] = {ref_q[e[0], e[1], e[2]]}")
+                print(f"nxt_q[e[0], e[1], e[2]] = {nxt_q[e[0], e[1], e[2]]}")
             return False, np.zeros((self.n_augment[arm], self.num_z, self.num_x))
         else:
             elements = np.argwhere((ref_pol == 1) & (nxt_pol == 0))
@@ -692,7 +692,7 @@ class RiskAwareWhittleInf:
         for arm in range(self.num_a):
             arm_indices = np.zeros((self.n_augment[arm], self.num_z, self.num_x))
             penalty_ref = lower_bound
-            ref_pol, _, ref_Q = self.bellman(arm, penalty_ref)
+            ref_pol, _, ref_q = self.bellman(arm, penalty_ref)
             ubp_pol, _, _ = self.bellman(arm, upper_bound)
             while not self.is_equal_mat(ref_pol, ubp_pol):
                 lb_temp = penalty_ref
@@ -708,11 +708,11 @@ class RiskAwareWhittleInf:
                     penalty = np.round(0.5 * (lb_temp + ub_temp), self.digits)
                     diff = np.abs(ub_temp - lb_temp)
                 penalty_ref = penalty + l_steps
-                nxt_pol, _, nxt_Q = self.bellman(arm, penalty_ref)
-                indexability_flag, arm_indices = self.indexability_check(arm, arm_indices, nxt_pol, ref_pol, nxt_Q, ref_Q, penalty)
+                nxt_pol, _, nxt_q = self.bellman(arm, penalty_ref)
+                indexability_flag, arm_indices = self.indexability_check(arm, arm_indices, nxt_pol, ref_pol, nxt_q, ref_q, penalty)
                 if indexability_flag:
                     ref_pol = np.copy(nxt_pol)
-                    ref_Q = np.copy(nxt_Q)
+                    ref_q = np.copy(nxt_q)
                 else:
                     break
             self.whittle_indices.append(arm_indices)
@@ -734,7 +734,7 @@ class RiskAwareWhittleInf:
         diff = np.inf
         iteration = 0
         while diff > 1e-4 and iteration < 1000:
-            V_prev = np.copy(V)
+            v_prev = np.copy(V)
 
             # Loop over all dimensions of the state space
             for x in range(self.num_x):
@@ -749,7 +749,7 @@ class RiskAwareWhittleInf:
                         pi[y, z, x] = np.argmax(Q[y, z, x, :])
                         V[y, z, x] = np.max(Q[y, z, x, :])
 
-            diff = np.max(np.abs(V - V_prev))
+            diff = np.max(np.abs(V - v_prev))
             iteration += 1
 
         return pi, V, Q
@@ -766,7 +766,7 @@ class RiskAwareWhittleInf:
         n_choices = np.minimum(n_choices, count_positive)
 
         max_index = np.max(current_indices)
-        candidates = np.where(current_indices == max_index)[0]
+        candidates = np.nonzero(current_indices == max_index)[0]
         chosen = np.random.choice(candidates, size=min(n_choices, len(candidates)), replace=False)
         action_vector = np.zeros_like(current_indices, dtype=int)
         action_vector[chosen] = 1

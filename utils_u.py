@@ -383,6 +383,40 @@ def run_inf_learning_combination(params):
     )
     process_and_plot(prob_err_lr, indx_err_lr, obj_n, obj_lr, 'lr', PATH, key_value)
 
+def run_avg_learning_combination(params):
+    nt, ns, na, tt, nc, n_iterations, save_data, PATH = params
+
+    if tt == 'structured':
+        prob_remain = numpy.round(numpy.linspace(0.1 / ns, 0.1 / ns, na), 2)
+    elif tt == 'clinical':
+        pr_ss_0 = numpy.round(numpy.linspace(0.657, 0.762, na), 3)
+        numpy.random.shuffle(pr_ss_0)
+        pr_sp_0 = numpy.round(numpy.linspace(0.201, 0.287, na), 3)
+        numpy.random.shuffle(pr_sp_0)
+        pr_pp_0 = numpy.round(numpy.linspace(0.882, 0.922, na), 3)
+        numpy.random.shuffle(pr_pp_0)
+        pr_ss_1 = numpy.round(numpy.linspace(0.806, 0.869, na), 3)
+        numpy.random.shuffle(pr_ss_1)
+        pr_sp_1 = numpy.round(numpy.linspace(0.115, 0.171, na), 3)
+        numpy.random.shuffle(pr_sp_1)
+        pr_pp_1 = numpy.round(numpy.linspace(0.879, 0.921, na), 3)
+        numpy.random.shuffle(pr_pp_1)
+        prob_remain = [pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1]
+        ns=3
+
+    key_value = f'nt{nt}_ns{ns}_na{na}_tt{tt}_nc{nc}'
+    rew_vals = rewards(nt, na, ns)
+    markov_matrix = get_transitions(na, ns, prob_remain, tt)
+    initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
+    w_range = 10
+    w_trials = 10*ns
+
+    prob_err_lr, indx_err_lr, rew_lr, rew_n = multiprocess_avg_learn_TSDE(
+        n_iterations, nt, ns, na, nc, rew_vals, markov_matrix, initial_states, 
+        save_data, f'{PATH}avg_{key_value}.joblib', w_range, w_trials
+    )
+    process_and_plot(prob_err_lr, indx_err_lr, rew_n, rew_lr, 'ln', PATH, key_value)
+
 
 def plot_data(y_data, xlabel, ylabel, filename, x_data=None, ylim=None, linewidth=4, fill_bounds=None):
     """
