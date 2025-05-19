@@ -17,7 +17,7 @@ def main():
     # Combinations
     param_sets = {
         'discount_factors': [0.9, 0.95, 0.99],
-        'n_steps': [1000],
+        'n_steps': [100, 1000],
         'n_states': [2, 3, 4],
         'n_augmnt': [10],
         'n_arms_coefficient': [3, 4, 5],
