@@ -11,7 +11,7 @@ def rewards(time_horizon, num_arms, num_states):
     vals = np.ones((num_states, num_arms))
     per_step_rewards = np.linspace(0, num_states-1, num=num_states) / (num_states-1)
     for x, per_step_reward in enumerate(per_step_rewards):
-        vals[x, :] = np.round(per_step_reward / time_horizon, 3) * np.ones(num_arms)
+        vals[x, :] = np.round(per_step_reward / time_horizon, 5) * np.ones(num_arms)
     return vals
 
 # Define the reward rewards for each arm

@@ -625,9 +625,7 @@ class RiskAwareWhittleInf:
         self.num_s = num_states[1]
         self.num_z = num_states[2]
         self.s_cutting_points = np.linspace(0, 1, self.num_s+1)
-        self.z_cutting_points = np.linspace(0, 1, self.num_z+1)
         self.all_total_rewards = [np.round(np.median(self.s_cutting_points[i:i + 2]), 3) for i in range(len(self.s_cutting_points) - 1)]
-        self.all_total_discnts = [np.round(np.median(self.z_cutting_points[i:i + 2]), 3) for i in range(len(self.z_cutting_points) - 1)]
         self.num_a = num_arms
         self.rewards = rewards
         self.transition = transition
@@ -651,13 +649,6 @@ class RiskAwareWhittleInf:
     def get_reward_partition(self, reward_value):
         index = np.searchsorted(self.s_cutting_points, reward_value, side='right')
         if index == len(self.s_cutting_points):
-            index -= 1
-
-        return index - 1
-    
-    def get_discnt_partition(self, discnt_value):
-        index = np.searchsorted(self.z_cutting_points, discnt_value, side='right')
-        if index == len(self.z_cutting_points):
             index -= 1
 
         return index - 1
@@ -720,46 +711,40 @@ class RiskAwareWhittleInf:
     def bellman(self, arm, penalty):
 
         # Value function initialization
-        V = np.zeros((self.n_augment[arm], self.num_z, self.num_x), dtype=np.float32)
+        V = np.zeros((self.n_augment[arm], self.num_x, self.num_z+1), dtype=np.float32)
         for y in range(self.n_augment[arm]):
-            V[y, :, :] = self.all_utility_values[arm][y] * np.ones([self.num_z, self.num_x])
+            V[y, :, self.num_z] = self.all_utility_values[arm][y] * np.ones(self.num_x)
 
         # State-action value function
-        Q = np.zeros((self.n_augment[arm], self.num_z, self.num_x, 2), dtype=np.float32)
+        Q = np.zeros((self.n_augment[arm], self.num_x, self.num_z, 2), dtype=np.float32)
 
         # Policy function
-        pi = np.zeros((self.n_augment[arm], self.num_z, self.num_x), dtype=np.int32)
+        pi = np.zeros((self.n_augment[arm], self.num_x, self.num_z), dtype=np.int32)
 
-        # Value iteration
-        diff = np.inf
-        iteration = 0
-        while diff > 1e-4 and iteration < 1000:
-            v_prev = np.copy(V)
+        # Backward induction timing
+        z = self.num_z - 1
 
-            # Loop over all dimensions of the state space
+        # The value iteration loop
+        while z >= 0:
             for x in range(self.num_x):
-                for z in range(self.num_z):
-                    for y in range(self.n_augment[arm]):
-                        nxt_y = self.get_reward_partition(self.all_total_rewards[y] + self.all_total_discnts[z] * self.rewards[x, arm])
-                        nxt_z = self.get_discnt_partition(self.all_total_discnts[z] * self.discount)
-                        for a in range(2):
-                            Q[y, z, x, a] = np.round(- penalty * self.all_total_discnts[z] * a + np.dot(V[nxt_y, nxt_z, :], self.transition[x, :, a, arm]), 3)
+                for y in range(self.n_augment[arm]):
+                    nxt_y = self.get_reward_partition(self.all_total_rewards[y] + (self.discount**z) * self.rewards[x, arm])
+                    
+                    Q[y, x, z, 0] = np.dot(V[nxt_y, :, z + 1], self.transition[x, :, 0, arm])
+                    Q[y, x, z, 1] = - penalty / self.num_z + np.dot(V[nxt_y, :, z + 1], self.transition[x, :, 1, arm])
 
-                        # Get the value function and the policy
-                        pi[y, z, x] = np.argmax(Q[y, z, x, :])
-                        V[y, z, x] = np.max(Q[y, z, x, :])
-
-            diff = np.max(np.abs(V - v_prev))
-            iteration += 1
+                    # Get the value function and the policy
+                    pi[y, x, z] = np.argmax(Q[y, x, z, :])
+                    V[y, x, z] = np.max(Q[y, x, z, :])
 
         return pi, V, Q
 
-    def take_action(self, n_choices, current_l, current_z, current_x):
+    def take_action(self, n_choices, current_l, current_x, current_z):
 
         current_indices = np.zeros(self.num_a)
         count_positive = 0
         for arm in range(self.num_a):
-            w_idx = self.whittle_indices[arm][current_l[arm], current_z, current_x[arm]]
+            w_idx = self.whittle_indices[arm][current_l[arm], current_x[arm], current_z]
             current_indices[arm] = w_idx
             if w_idx >= 0:
                 count_positive += 1

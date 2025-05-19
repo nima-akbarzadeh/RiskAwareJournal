@@ -408,8 +408,8 @@ def run_avg_learning_combination(params):
     rew_vals = rewards(nt, na, ns)
     markov_matrix = get_transitions(na, ns, prob_remain, tt)
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
-    w_range = 10
-    w_trials = 10*ns
+    w_range = 1
+    w_trials = 100
 
     prob_err_lr, indx_err_lr, rew_lr, rew_n = multiprocess_avg_learn_TSDE(
         n_iterations, nt, ns, na, nc, rew_vals, markov_matrix, initial_states, 

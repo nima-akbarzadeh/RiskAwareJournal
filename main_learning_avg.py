@@ -5,24 +5,24 @@ warnings.filterwarnings("ignore")
 
 
 def main():
-    n_steps = 1000
-    n_iterations = 100
+    n_steps = 5000
+    n_iterations = 20
     
     param_sets_list = [
         {
             'n_steps': [n_steps],
-            'n_states': [4, 5],
+            'n_states': [3, 4, 5],
             'n_arms': [3, 4, 5],
             'transition_type': ['structured'],
             'arm_choices': [1]
         },
-        {
-            'n_steps': [n_steps],
-            'n_states': [3],
-            'n_arms': [3, 4, 5],
-            'transition_type': ['clinical', 'structured'],
-            'arm_choices': [1]
-        },
+        # {
+        #     'n_steps': [n_steps],
+        #     'n_states': [3],
+        #     'n_arms': [3, 4, 5],
+        #     'transition_type': ['clinical', 'structured'],
+        #     'arm_choices': [1]
+        # },
     ]
 
     save_data = True
