@@ -240,7 +240,7 @@ def run_a_inf_planning_combination(params):
     Utility_Whittle = WhittleInf(ns, na, rew_utility_vals, markov_matrix, df)
     Utility_Whittle.get_indices(2*ng, ng*ns*na)
 
-    RiskAware_Whittle = RiskAwareWhittleInf([ns, ng, ng], na, rew_vals, markov_matrix, df, ut[0], ut[1], th)
+    RiskAware_Whittle = RiskAwareWhittleInf([ns, ng, nt], na, rew_vals, markov_matrix, df, ut[0], ut[1], th)
     RiskAware_Whittle.get_indices(2*ng, ng*ns*na)
 
     nch = max(1, int(round(fr * na)))
@@ -382,6 +382,7 @@ def run_inf_learning_combination(params):
         save_data, f'{PATH}inf_riskaware_{key_value}.joblib', w_range, w_trials
     )
     process_and_plot(prob_err_lr, indx_err_lr, obj_n, obj_lr, 'lr', PATH, key_value)
+
 
 def run_avg_learning_combination(params):
     nt, ns, na, tt, nc, n_iterations, save_data, PATH = params

@@ -5,25 +5,25 @@ warnings.filterwarnings("ignore")
 
 
 def main():
-    n_steps = 1000
+    n_steps = [100, 1000]
     discount = 0.99999
     n_iterations = 10
     
     param_sets_list = [
-        # {
-        #     'discount_factors': [discount],
-        #     'n_steps': [n_steps],
-        #     'n_states': [3, 4, 5],
-        #     'n_augmnt': [10],
-        #     'n_arms': [3, 4, 5],
-        #     'transition_type': ['structured'],
-        #     'utility_functions': [(3, 4), (3, 8), (3, 16)],
-        #     'thresholds': [0.7, 0.8, 0.9],
-        #     'arm_choices': [1]
-        # },
         {
             'discount_factors': [discount],
-            'n_steps': [n_steps],
+            'n_steps': n_steps,
+            'n_states': [3, 4, 5],
+            'n_augmnt': [10],
+            'n_arms': [3, 4, 5],
+            'transition_type': ['structured'],
+            'utility_functions': [(3, 4), (3, 8), (3, 16)],
+            'thresholds': [0.7, 0.8, 0.9],
+            'arm_choices': [1]
+        },
+        {
+            'discount_factors': [discount],
+            'n_steps': n_steps,
             'n_states': [3],
             'n_augmnt': [5],
             'n_arms': [2],
