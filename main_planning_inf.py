@@ -8,7 +8,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-PATH = './planning-infinite-May25/'
+PATH = './planning-infinite-May25-Tset/'
 if not os.path.exists(PATH):
     os.makedirs(PATH)
 
@@ -26,18 +26,18 @@ def main():
     #     'fraction_of_arms': [0.1, 0.3, 0.5]
     # }
     param_sets = {
-        'discount_factors': [0.99],
+        'discount_factors': [0.9, 0.99],
         'n_steps': [10, 25, 50, 75, 100],
-        'n_states': [4],
-        'n_augmnt': [10],
-        'n_arms_coefficient': [3],
-        'utility_functions': [(3, 16)],
-        'thresholds': [0.5, 0.9],
+        'n_states': [2, 4],
+        'n_augmnt': [50],
+        'n_arms_coefficient': [3, 5],
+        'utility_functions': [(1, 0), (2, 8), (3, 16)],
+        'thresholds': [0.2, 0.5, 0.8],
         'fraction_of_arms': [0.1, 0.5]
     }
 
     # Iterations
-    n_iterations = 5
+    n_iterations = 10
 
     # Saving the results
     save_flag = True

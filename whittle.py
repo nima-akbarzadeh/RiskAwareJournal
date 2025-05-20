@@ -364,7 +364,7 @@ class WhittleNS:
 
 class RiskAwareWhittleNS:
     
-    def __init__(self, num_states: int, num_arms: int, rewards, transition, horizon, u_type, u_order, threshold):
+    def __init__(self, num_states, num_arms, rewards, transition, horizon, u_type, u_order, threshold):
         self.num_x = num_states[0]
         self.num_s = num_states[1]
         self.cutting_points = np.round(np.linspace(0, horizon, self.num_s+1), 2)
@@ -605,7 +605,7 @@ class WhittleInf:
 
 class RiskAwareWhittleInf:
     
-    def __init__(self, num_states: int, num_arms: int, rewards, transition, discount, u_type, u_order, threshold):
+    def __init__(self, num_states, num_arms, rewards, transition, discount, u_type, u_order, threshold):
         self.discount = discount
         self.num_x = num_states[0]
         self.num_s = num_states[1]
@@ -691,7 +691,7 @@ class RiskAwareWhittleInf:
         # Value function initialization
         V = np.zeros((self.n_augment, self.num_x, self.num_z+1), dtype=np.float32)
         for y in range(self.n_augment):
-            V[y, :, self.num_z] = self.all_utility_values[arm][y] * np.ones(self.num_x)
+            V[y, :, self.num_z] = self.all_utility_values[y] * np.ones(self.num_x)
 
         # State-action value function
         Q = np.zeros((self.n_augment, self.num_x, self.num_z, 2), dtype=np.float32)

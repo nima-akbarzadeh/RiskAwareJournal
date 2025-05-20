@@ -142,13 +142,13 @@ def run_a_ns_planning_combination(params):
     markov_matrix = get_transitions(na, ns, prob_remain, 'structured')
 
     Neutral_Whittle = WhittleNS(ns, na, rew_vals, markov_matrix, nt)
-    Neutral_Whittle.get_indices(2*ng, ng*ns*na)
+    Neutral_Whittle.get_indices(ng, ng*ns*na)
 
     Utility_Whittle = WhittleNS(ns, na, rew_utility_vals, markov_matrix, nt)
-    Utility_Whittle.get_indices(2*ng, ng*ns*na)
+    Utility_Whittle.get_indices(ng, ng*ns*na)
 
     RiskAware_Whittle = RiskAwareWhittleNS([ns, ng], na, rew_vals, markov_matrix, nt, ut[0], ut[1], th)
-    RiskAware_Whittle.get_indices(2*ng, ng*ns*na)
+    RiskAware_Whittle.get_indices(ng, ng*ns*na)
 
     nch = max(1, int(round(fr * na)))
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
@@ -235,13 +235,13 @@ def run_a_inf_planning_combination(params):
     markov_matrix = get_transitions(na, ns, prob_remain, 'structured')
 
     Neutral_Whittle = WhittleInf(ns, na, rew_vals, markov_matrix, df)
-    Neutral_Whittle.get_indices(2*ng, ng*ns*na)
+    Neutral_Whittle.get_indices(ng, ng*ns*na)
 
     Utility_Whittle = WhittleInf(ns, na, rew_utility_vals, markov_matrix, df)
-    Utility_Whittle.get_indices(2*ng, ng*ns*na)
+    Utility_Whittle.get_indices(ng, ng*ns*na)
 
     RiskAware_Whittle = RiskAwareWhittleInf([ns, ng, nt], na, rew_vals, markov_matrix, df, ut[0], ut[1], th)
-    RiskAware_Whittle.get_indices(2*ng, ng*ns*na)
+    RiskAware_Whittle.get_indices(ng, ng*ns*na)
 
     nch = max(1, int(round(fr * na)))
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
