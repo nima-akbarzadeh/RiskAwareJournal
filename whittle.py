@@ -375,7 +375,6 @@ class RiskAwareWhittleNS:
         self.horizon = horizon
         self.u_type = u_type
         self.digits = 3
-        self.n_realize = [self.num_s] * self.horizon
         self.n_augment = len(self.all_total_rewards)
         self.all_utility_values = []
         for total_reward in self.all_total_rewards:
@@ -419,14 +418,14 @@ class RiskAwareWhittleNS:
             penalty_ref = lower_bound
             ref_pol, _, _ = self.backward_discreteliftedstate(arm, penalty_ref)
             ubp_pol, _, _ = self.backward_discreteliftedstate(arm, upper_bound)
-            while not self.is_equal_mat(ref_pol, ubp_pol, self.n_realize):
+            while not self.is_equal_mat(ref_pol, ubp_pol):
                 lb_temp = penalty_ref
                 ub_temp = upper_bound
                 penalty = np.round(0.5 * (lb_temp + ub_temp), self.digits)
                 diff = np.abs(ub_temp - lb_temp)
                 while l_steps < diff:
                     som_pol, _, _ = self.backward_discreteliftedstate(arm, penalty)
-                    if self.is_equal_mat(som_pol, ref_pol, self.n_realize):
+                    if self.is_equal_mat(som_pol, ref_pol):
                         lb_temp = penalty
                     else:
                         ub_temp = penalty
@@ -618,7 +617,6 @@ class RiskAwareWhittleInf:
         self.transition = transition
         self.u_type = u_type
         self.digits = 3
-        self.n_realize = [self.num_s] * self.horizon
         self.n_augment = len(self.all_total_rewards)
         self.all_utility_values = []
         for total_reward in self.all_total_rewards:
