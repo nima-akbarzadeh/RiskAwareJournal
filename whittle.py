@@ -515,7 +515,7 @@ class WhittleInf:
         l_steps = index_range / n_trials
         self.binary_search(0, index_range, l_steps)
 
-    def is_equal_mat(self, mat1, mat2, tol=1e-6):
+    def is_equal_mat(self, mat1, mat2, tol=1e-4):
         return np.all(np.abs(mat1 - mat2) < tol)
 
     def indexability_check(self, arm_indices, nxt_pol, ref_pol, penalty):
@@ -556,27 +556,32 @@ class WhittleInf:
                     break
             self.whittle_indices.append(arm_indices)
 
-    def backward(self, arm, penalty):
+    def bellman(self, arm, penalty):
         # Value function initialization
-        V = np.zeros((self.num_x, self.horizon + 1), dtype=np.float32)
+        V = np.zeros(self.num_x, dtype=np.float32)
 
         # State-action value function
-        Q = np.zeros((self.num_x, self.horizon, 2), dtype=np.float32)
+        Q = np.zeros((self.num_x, 2), dtype=np.float32)
 
         # Policy function
-        pi = np.zeros((self.num_x, self.horizon), dtype=np.int32)
+        pi = np.zeros(self.num_x, dtype=np.int32)
 
-        # Backward induction timing
-        for t in range(self.horizon - 1, -1, -1):
+        # Value iteration
+        diff = np.inf
+        iteration = 0
+        while diff > 1e-4 and iteration < self.horizon:
+            v_prev = np.copy(V)
             for x in range(self.num_x):
-
                 # Calculate Q-values for both actions
-                Q[x, t, 0] = self.reward[x, t, arm] + np.dot(V[:, t + 1], self.transition[x, :, 0, arm])
-                Q[x, t, 1] = self.reward[x, t, arm] - penalty / self.horizon + np.dot(V[:, t + 1], self.transition[x, :, 1, arm])
+                for a in range(2):
+                    Q[x, a] = self.reward[x, arm] - (1 - self.discount) * penalty * a \
+                        + self.discount * np.dot(V, self.transition[x, :, a, arm])
 
                 # Optimal action and value
-                pi[x, t] = np.argmax(Q[x, t, :])
-                V[x, t] = np.max(Q[x, t, :])
+                pi[x] = np.argmax(Q[x, :])
+                V[x] = np.max(Q[x, :])
+            diff = np.max(np.abs(V - v_prev))
+            iteration += 1
 
         return pi, V, Q
 
@@ -632,10 +637,8 @@ class RiskAwareWhittleInf:
         l_steps = index_range / n_trials
         self.binary_search(0, index_range, l_steps)
 
-    def is_equal_mat(self, mat1, mat2):
-        if np.array_equal(mat1, mat2):
-            return True
-        return False
+    def is_equal_mat(self, mat1, mat2, tol=1e-4):
+        return np.all(np.abs(mat1 - mat2) < tol)
 
     def indexability_check(self, arm_indices, nxt_pol, ref_pol, nxt_q, ref_q, penalty):
         if np.any((ref_pol == 0) & (nxt_pol == 1)):
