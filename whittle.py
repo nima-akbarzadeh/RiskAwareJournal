@@ -375,20 +375,11 @@ class RiskAwareWhittleNS:
         self.horizon = horizon
         self.u_type = u_type
         self.digits = 3
-        self.n_realize = []
-        self.n_augment = [0] * self.num_a
-        self.all_rews = []
+        self.n_realize = [self.num_s] * self.horizon
+        self.n_augment = len(self.all_total_rewards)
         self.all_utility_values = []
-
-        for a in range(num_arms):
-            self.n_augment[a] = len(self.all_total_rewards)
-            self.n_realize.append([self.num_s] * self.horizon)
-            self.all_rews.append(self.all_total_rewards)
-
-            arm_utilities = []
-            for total_reward in self.all_total_rewards:
-                arm_utilities.append(compute_utility(total_reward, threshold, u_type, u_order))
-            self.all_utility_values.append(arm_utilities)
+        for total_reward in self.all_total_rewards:
+            self.all_utility_values.append(compute_utility(total_reward, threshold, u_type, u_order))
 
         self.whittle_indices = []
 
@@ -403,21 +394,18 @@ class RiskAwareWhittleNS:
         l_steps = index_range / n_trials
         self.binary_search(0, index_range, l_steps)
 
-    def is_equal_mat(self, mat1, mat2, realize_index):
-        for t in range(self.horizon):
-            mat1_new = mat1[:realize_index[t], :]
-            mat2_new = mat2[:realize_index[t], :]
-            if not np.array_equal(mat1_new, mat2_new):
-                return False
-        return True
+    def is_equal_mat(self, mat1, mat2):
+        if np.array_equal(mat1, mat2):
+            return True
+        return False
 
-    def indexability_check(self, arm, arm_indices, realize_index, nxt_pol, ref_pol, penalty):
+    def indexability_check(self, arm_indices, nxt_pol, ref_pol, penalty):
         for t in range(self.horizon):
-            ref_pol_new = ref_pol[:realize_index[t], :, t]
-            nxt_pol_new = nxt_pol[:realize_index[t], :, t]
+            ref_pol_new = ref_pol[:, :, t]
+            nxt_pol_new = nxt_pol[:, :, t]
             if np.any((ref_pol_new == 0) & (nxt_pol_new == 1)):
                 print("RA - Not indexable!")
-                return False, np.zeros((self.n_augment[arm], self.num_x, self.horizon))
+                return False, np.zeros((self.n_augment, self.num_x, self.horizon))
             else:
                 elements = np.argwhere((ref_pol_new == 1) & (nxt_pol_new == 0))
                 for e in elements:
@@ -427,18 +415,18 @@ class RiskAwareWhittleNS:
     def binary_search(self, lower_bound, upper_bound, l_steps):
 
         for arm in range(self.num_a):
-            arm_indices = np.zeros((self.n_augment[arm], self.num_x, self.horizon))
+            arm_indices = np.zeros((self.n_augment, self.num_x, self.horizon))
             penalty_ref = lower_bound
             ref_pol, _, _ = self.backward_discreteliftedstate(arm, penalty_ref)
             ubp_pol, _, _ = self.backward_discreteliftedstate(arm, upper_bound)
-            while not self.is_equal_mat(ref_pol, ubp_pol, self.n_realize[arm]):
+            while not self.is_equal_mat(ref_pol, ubp_pol, self.n_realize):
                 lb_temp = penalty_ref
                 ub_temp = upper_bound
                 penalty = np.round(0.5 * (lb_temp + ub_temp), self.digits)
                 diff = np.abs(ub_temp - lb_temp)
                 while l_steps < diff:
                     som_pol, _, _ = self.backward_discreteliftedstate(arm, penalty)
-                    if self.is_equal_mat(som_pol, ref_pol, self.n_realize[arm]):
+                    if self.is_equal_mat(som_pol, ref_pol, self.n_realize):
                         lb_temp = penalty
                     else:
                         ub_temp = penalty
@@ -446,7 +434,7 @@ class RiskAwareWhittleNS:
                     diff = np.abs(ub_temp - lb_temp)
                 penalty_ref = penalty + l_steps
                 nxt_pol, _, _ = self.backward_discreteliftedstate(arm, penalty_ref)
-                indexability_flag, arm_indices = self.indexability_check(arm, arm_indices, self.n_realize[arm], nxt_pol, ref_pol, penalty)
+                indexability_flag, arm_indices = self.indexability_check(arm_indices, nxt_pol, ref_pol, penalty)
                 if indexability_flag:
                     ref_pol = np.copy(nxt_pol)
                 else:
@@ -456,15 +444,15 @@ class RiskAwareWhittleNS:
     def backward_discreteliftedstate(self, arm, penalty):
 
         # Value function initialization
-        V = np.zeros((self.n_augment[arm], self.num_x, self.horizon + 1), dtype=np.float32)
-        for l in range(self.n_augment[arm]):
-            V[l, :, self.horizon] = self.all_utility_values[arm][l] * np.ones(self.num_x)
+        V = np.zeros((self.n_augment, self.num_x, self.horizon + 1), dtype=np.float32)
+        for l in range(self.n_augment):
+            V[l, :, self.horizon] = self.all_utility_values[l] * np.ones(self.num_x)
 
         # State-action value function
-        Q = np.zeros((self.n_augment[arm], self.num_x, self.horizon, 2), dtype=np.float32)
+        Q = np.zeros((self.n_augment, self.num_x, self.horizon, 2), dtype=np.float32)
 
         # Policy function
-        pi = np.zeros((self.n_augment[arm], self.num_x, self.horizon), dtype=np.int32)
+        pi = np.zeros((self.n_augment, self.num_x, self.horizon), dtype=np.int32)
 
         # Backward induction timing
         t = self.horizon - 1
@@ -476,7 +464,7 @@ class RiskAwareWhittleNS:
             for x in range(self.num_x):
 
                 # Loop over the second dimension of the state space
-                for l in range(len(self.all_total_rewards)):
+                for l in range(self.n_augment):
 
                     nxt_l = self.get_reward_partition(self.all_total_rewards[l] + self.rewards[x, t, arm])
                     
@@ -586,7 +574,7 @@ class WhittleInf:
             for x in range(self.num_x):
                 # Calculate Q-values for both actions
                 for a in range(2):
-                    Q[x, a] = self.reward[x, arm] - penalty * a + self.discount * np.dot(V, self.transition[x, :, a, arm])
+                    Q[x, a] = self.reward[x, arm] - penalty * a + (1 - self.discount) * self.discount * np.dot(V, self.transition[x, :, a, arm])
 
                 # Optimal action and value
                 pi[x] = np.argmax(Q[x, :])
@@ -619,7 +607,6 @@ class WhittleInf:
 class RiskAwareWhittleInf:
     
     def __init__(self, num_states: int, num_arms: int, rewards, transition, discount, u_type, u_order, threshold):
-        
         self.discount = discount
         self.num_x = num_states[0]
         self.num_s = num_states[1]
@@ -631,18 +618,11 @@ class RiskAwareWhittleInf:
         self.transition = transition
         self.u_type = u_type
         self.digits = 3
-        self.n_realize = []
-        self.n_augment = [0] * self.num_a
-        self.all_rews = []
+        self.n_realize = [self.num_s] * self.horizon
+        self.n_augment = len(self.all_total_rewards)
         self.all_utility_values = []
-
-        for a in range(self.num_a):
-            self.n_augment[a] = len(self.all_total_rewards)
-
-            arm_utilities = []
-            for total_reward in self.all_total_rewards:
-                arm_utilities.append(compute_utility(total_reward, threshold, u_type, u_order))
-            self.all_utility_values.append(arm_utilities)
+        for total_reward in self.all_total_rewards:
+            self.all_utility_values.append(compute_utility(total_reward, threshold, u_type, u_order))
 
         self.whittle_indices = []
 
@@ -662,16 +642,16 @@ class RiskAwareWhittleInf:
             return True
         return False
 
-    def indexability_check(self, arm, arm_indices, nxt_pol, ref_pol, nxt_q, ref_q, penalty):
+    def indexability_check(self, arm_indices, nxt_pol, ref_pol, nxt_q, ref_q, penalty):
         if np.any((ref_pol == 0) & (nxt_pol == 1)):
             print("="*50)
             print("RA - Not indexable!")
-            elements = np.argwhere((ref_pol == 0) & (nxt_pol == 1))
-            for e in elements:
-                print(f"e = {e}")
-                print(f"ref_q[e[0], e[1], e[2]] = {ref_q[e[0], e[1], e[2]]}")
-                print(f"nxt_q[e[0], e[1], e[2]] = {nxt_q[e[0], e[1], e[2]]}")
-            return False, np.zeros((self.n_augment[arm], self.num_z, self.num_x))
+            # elements = np.argwhere((ref_pol == 0) & (nxt_pol == 1))
+            # for e in elements:
+                # print(f"e = {e}")
+                # print(f"ref_q[e[0], e[1], e[2]] = {ref_q[e[0], e[1], e[2]]}")
+                # print(f"nxt_q[e[0], e[1], e[2]] = {nxt_q[e[0], e[1], e[2]]}")
+            return False, np.zeros((self.n_augment, self.num_x, self.num_z))
         else:
             elements = np.argwhere((ref_pol == 1) & (nxt_pol == 0))
             for e in elements:
@@ -681,7 +661,7 @@ class RiskAwareWhittleInf:
     def binary_search(self, lower_bound, upper_bound, l_steps):
 
         for arm in range(self.num_a):
-            arm_indices = np.zeros((self.n_augment[arm], self.num_z, self.num_x))
+            arm_indices = np.zeros((self.n_augment, self.num_x, self.num_z))
             penalty_ref = lower_bound
             ref_pol, _, ref_q = self.bellman(arm, penalty_ref)
             ubp_pol, _, _ = self.bellman(arm, upper_bound)
@@ -700,7 +680,7 @@ class RiskAwareWhittleInf:
                     diff = np.abs(ub_temp - lb_temp)
                 penalty_ref = penalty + l_steps
                 nxt_pol, _, nxt_q = self.bellman(arm, penalty_ref)
-                indexability_flag, arm_indices = self.indexability_check(arm, arm_indices, nxt_pol, ref_pol, nxt_q, ref_q, penalty)
+                indexability_flag, arm_indices = self.indexability_check(arm_indices, nxt_pol, ref_pol, nxt_q, ref_q, penalty)
                 if indexability_flag:
                     ref_pol = np.copy(nxt_pol)
                     ref_q = np.copy(nxt_q)
@@ -711,15 +691,15 @@ class RiskAwareWhittleInf:
     def bellman(self, arm, penalty):
 
         # Value function initialization
-        V = np.zeros((self.n_augment[arm], self.num_x, self.num_z+1), dtype=np.float32)
-        for y in range(self.n_augment[arm]):
+        V = np.zeros((self.n_augment, self.num_x, self.num_z+1), dtype=np.float32)
+        for y in range(self.n_augment):
             V[y, :, self.num_z] = self.all_utility_values[arm][y] * np.ones(self.num_x)
 
         # State-action value function
-        Q = np.zeros((self.n_augment[arm], self.num_x, self.num_z, 2), dtype=np.float32)
+        Q = np.zeros((self.n_augment, self.num_x, self.num_z, 2), dtype=np.float32)
 
         # Policy function
-        pi = np.zeros((self.n_augment[arm], self.num_x, self.num_z), dtype=np.int32)
+        pi = np.zeros((self.n_augment, self.num_x, self.num_z), dtype=np.int32)
 
         # Backward induction timing
         z = self.num_z - 1
@@ -727,7 +707,7 @@ class RiskAwareWhittleInf:
         # The value iteration loop
         while z >= 0:
             for x in range(self.num_x):
-                for y in range(self.n_augment[arm]):
+                for y in range(self.n_augment):
                     nxt_y = self.get_reward_partition(self.all_total_rewards[y] + (self.discount**z) * self.rewards[x, arm])
                     
                     Q[y, x, z, 0] = np.dot(V[nxt_y, :, z + 1], self.transition[x, :, 0, arm])
@@ -736,6 +716,8 @@ class RiskAwareWhittleInf:
                     # Get the value function and the policy
                     pi[y, x, z] = np.argmax(Q[y, x, z, :])
                     V[y, x, z] = np.max(Q[y, x, z, :])
+
+            z = z - 1
 
         return pi, V, Q
 

@@ -9,7 +9,7 @@ def rewards(time_horizon, num_arms, num_states):
     Calculate rewards for each arm.
     """
     vals = np.ones((num_states, num_arms))
-    per_step_rewards = np.linspace(0, num_states-1, num=num_states) / (num_states-1)
+    per_step_rewards = np.linspace(0, 1, num=num_states) 
     for x, per_step_reward in enumerate(per_step_rewards):
         vals[x, :] = np.round(per_step_reward / time_horizon, 5) * np.ones(num_arms)
     return vals
@@ -20,7 +20,7 @@ def rewards_utility(time_horizon, num_arms, num_states, threshold, u_type, u_ord
     Calculate a utility function of the rewards for each arm.
     """
     vals = np.ones((num_states, num_arms))
-    per_step_rewards = np.linspace(0, num_states-1, num=num_states) / (num_states-1)
+    per_step_rewards = np.linspace(0, 1, num=num_states) 
     for x, per_step_reward in enumerate(per_step_rewards):
         vals[x, :] = np.round(compute_utility(per_step_reward, threshold, u_type, u_order) / time_horizon, 3) * np.ones(num_arms)
     return vals
@@ -32,9 +32,9 @@ def rewards_ns(discount, time_horizon, num_arms, num_states):
     """
     vals = np.ones((num_states, time_horizon, num_arms))
     for t in range(time_horizon):
-        per_step_rewards = (discount**t) * np.linspace(0, num_states-1, num=num_states) / (num_states-1)
+        per_step_rewards = (1 - discount) * (discount**t) * np.linspace(0, 1, num=num_states)  / (1 - discount ** time_horizon)
         for x, per_step_reward in enumerate(per_step_rewards):
-            vals[x, t, :] = np.round((1 - discount) * per_step_reward / (1 - discount ** time_horizon), 3) * np.ones(num_arms)
+            vals[x, t, :] = np.round(per_step_reward, 3) * np.ones(num_arms)
     return vals
 
 # Define the reward rewards for each arm
@@ -44,31 +44,35 @@ def rewards_ns_utility(discount, time_horizon, num_arms, num_states, threshold, 
     """
     vals = np.ones((num_states, time_horizon, num_arms))
     for t in range(time_horizon):
-        per_step_rewards = (discount**t) * np.linspace(0, num_states-1, num=num_states) / (num_states-1)
+        per_step_rewards = np.linspace(0, 1, num=num_states) 
         for x, per_step_reward in enumerate(per_step_rewards):
-            vals[x, t, :] = np.round((1 - discount) * compute_utility(per_step_reward, threshold, u_type, u_order) / (1 - discount ** time_horizon), 3) * np.ones(num_arms)
+            vals[x, t, :] = np.round(
+                (discount ** t) * (1 - discount) * compute_utility(per_step_reward, threshold, u_type, u_order) / (1 - discount ** time_horizon)
+            , 3) * np.ones(num_arms)
     return vals
 
 # Define the reward values for each arm
-def rewards_inf(num_arms, num_states):
+def rewards_inf(discount, time_horizon, num_arms, num_states):
     """
     Calculate rewards for each arm.
     """
     vals = np.ones((num_states, num_arms))
-    per_step_rewards = np.linspace(0, num_states-1, num=num_states) / (num_states-1)
+    per_step_rewards = (1 - discount) * np.linspace(0, 1, num=num_states)  / (1 - discount ** time_horizon)
     for x, per_step_reward in enumerate(per_step_rewards):
         vals[x, :] = np.round(per_step_reward, 3) * np.ones(num_arms)
     return vals
 
 # Define the reward rewards for each arm
-def rewards_inf_utility(num_arms, num_states, threshold, u_type, u_order):
+def rewards_inf_utility(discount, time_horizon, num_arms, num_states, threshold, u_type, u_order):
     """
     Calculate a utility function of the rewards for each arm.
     """
     vals = np.ones((num_states, num_arms))
-    per_step_rewards = np.linspace(0, num_states-1, num=num_states) / (num_states-1)
+    per_step_rewards = np.linspace(0, 1, num=num_states) 
     for x, per_step_reward in enumerate(per_step_rewards):
-        vals[x, :] = np.round(compute_utility(per_step_reward, threshold, u_type, u_order), 3) * np.ones(num_arms)
+        vals[x, :] = np.round(
+            (1 - discount) * compute_utility(per_step_reward, threshold, u_type, u_order) / (1 - discount ** time_horizon)
+        , 3) * np.ones(num_arms)
     return vals
 
 def ceil_to_decimals(arr, decimals):

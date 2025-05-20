@@ -229,8 +229,8 @@ def run_a_inf_planning_combination(params):
     key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nc{nc}_ut{ut}_th{th}_fr{fr}'
     na = nc * ns
 
-    rew_vals = rewards_inf(na, ns)
-    rew_utility_vals = rewards_inf_utility(na, ns, th, ut[0], ut[1])
+    rew_vals = rewards_inf(df, nt, na, ns)
+    rew_utility_vals = rewards_inf_utility(df, nt, na, ns, th, ut[0], ut[1])
     prob_remain = numpy.round(numpy.linspace(0.1 / ns, 1 / ns, na), 2)
     markov_matrix = get_transitions(na, ns, prob_remain, 'structured')
 
@@ -371,7 +371,7 @@ def run_inf_learning_combination(params):
         ns=3
 
     key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_na{na}_tt{tt}_ut{ut}_th{th}_nc{nc}'
-    rew_vals = rewards_inf(na, ns)
+    rew_vals = rewards_ns(df, nt, na, ns)
     markov_matrix = get_transitions(na, ns, prob_remain, tt)
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
     w_range = ng
