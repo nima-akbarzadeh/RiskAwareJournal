@@ -234,10 +234,10 @@ def run_a_inf_planning_combination(params):
     prob_remain = numpy.round(numpy.linspace(0.1 / ns, 1 / ns, na), 2)
     markov_matrix = get_transitions(na, ns, prob_remain, 'structured')
 
-    Neutral_Whittle = WhittleInf(ns, na, rew_vals, markov_matrix, df)
+    Neutral_Whittle = WhittleInf(ns, na, rew_vals, markov_matrix, nt, df)
     Neutral_Whittle.get_indices(ng, ng*ns*na)
 
-    Utility_Whittle = WhittleInf(ns, na, rew_utility_vals, markov_matrix, df)
+    Utility_Whittle = WhittleInf(ns, na, rew_utility_vals, markov_matrix, nt, df)
     Utility_Whittle.get_indices(ng, ng*ns*na)
 
     RiskAware_Whittle = RiskAwareWhittleInf([ns, ng, nt], na, rew_vals, markov_matrix, df, ut[0], ut[1], th)

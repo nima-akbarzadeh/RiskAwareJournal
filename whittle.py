@@ -500,13 +500,14 @@ class RiskAwareWhittleNS:
 
 class WhittleInf:
 
-    def __init__(self, num_states: int, num_arms: int, reward, transition, discount=1):
+    def __init__(self, num_states: int, num_arms: int, reward, transition, horizon, discount=1):
         
         self.discount = discount
         self.num_x = num_states
         self.num_a = num_arms
         self.reward = reward
         self.transition = transition
+        self.horizon = horizon
         self.digits = 3
         self.whittle_indices = []
 
@@ -555,31 +556,27 @@ class WhittleInf:
                     break
             self.whittle_indices.append(arm_indices)
 
-    def bellman(self, arm, penalty):
+    def backward(self, arm, penalty):
         # Value function initialization
-        V = np.zeros(self.num_x, dtype=np.float32)
+        V = np.zeros((self.num_x, self.horizon + 1), dtype=np.float32)
 
         # State-action value function
-        Q = np.zeros((self.num_x, 2), dtype=np.float32)
+        Q = np.zeros((self.num_x, self.horizon, 2), dtype=np.float32)
 
         # Policy function
-        pi = np.zeros(self.num_x, dtype=np.int32)
+        pi = np.zeros((self.num_x, self.horizon), dtype=np.int32)
 
-        # Value iteration
-        diff = np.inf
-        iteration = 0
-        while diff > 1e-4 and iteration < 1000:
-            v_prev = np.copy(V)
+        # Backward induction timing
+        for t in range(self.horizon - 1, -1, -1):
             for x in range(self.num_x):
+
                 # Calculate Q-values for both actions
-                for a in range(2):
-                    Q[x, a] = self.reward[x, arm] - penalty * a + (1 - self.discount) * self.discount * np.dot(V, self.transition[x, :, a, arm])
+                Q[x, t, 0] = self.reward[x, t, arm] + np.dot(V[:, t + 1], self.transition[x, :, 0, arm])
+                Q[x, t, 1] = self.reward[x, t, arm] - penalty / self.horizon + np.dot(V[:, t + 1], self.transition[x, :, 1, arm])
 
                 # Optimal action and value
-                pi[x] = np.argmax(Q[x, :])
-                V[x] = np.max(Q[x, :])
-            diff = np.max(np.abs(V - v_prev))
-            iteration += 1
+                pi[x, t] = np.argmax(Q[x, t, :])
+                V[x, t] = np.max(Q[x, t, :])
 
         return pi, V, Q
 
