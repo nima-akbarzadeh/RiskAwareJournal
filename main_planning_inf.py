@@ -7,29 +7,18 @@ from utils_u import run_multiple_inf_planning_combinations
 import warnings
 warnings.filterwarnings("ignore")
 
-
 PATH = './planning-infinite-May25-Tset/'
 if not os.path.exists(PATH):
     os.makedirs(PATH)
 
 def main():
 
-    # # Combinations
-    # param_sets = {
-    #     'discount_factors': [0.9, 0.95, 0.99],
-    #     'n_steps': [100, 1000],
-    #     'n_states': [2, 3, 4],
-    #     'n_augmnt': [10],
-    #     'n_arms_coefficient': [3, 4, 5],
-    #     'utility_functions': [(1, 0), (2, 4), (2, 8), (2, 16), (3, 4), (3, 8), (3, 16)],
-    #     'thresholds': [numpy.round(0.1 * n, 1) for n in range(1, 10)],
-    #     'fraction_of_arms': [0.1, 0.3, 0.5]
-    # }
     param_sets = {
         'discount_factors': [0.9, 0.99],
-        'n_steps': [10, 25, 50, 75, 100],
+        'n_steps': [1000],
         'n_states': [2, 4],
         'n_augmnt': [50],
+        'n_discnt': [10, 25, 50, 75, 100],
         'n_arms_coefficient': [3, 5],
         'utility_functions': [(1, 0), (2, 8), (3, 16)],
         'thresholds': [0.2, 0.5, 0.8],
@@ -44,11 +33,12 @@ def main():
 
     # Main run
     param_list = [
-        (df, nt, ns, ng, nc, ut, th, fr, n_iterations, save_flag, PATH)
+        (df, nt, ns, ng, nd, nc, ut, th, fr, n_iterations, save_flag, PATH)
         for df in param_sets['discount_factors']
         for nt in param_sets['n_steps']
         for ns in param_sets['n_states']
         for ng in param_sets['n_augmnt']
+        for nd in param_sets['n_discnt']
         for nc in param_sets['n_arms_coefficient']
         for ut in param_sets['utility_functions']
         for th in param_sets['thresholds']

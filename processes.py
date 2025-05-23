@@ -198,7 +198,7 @@ def process_inf_neutral_whittle(Whittle, n_iterations, discount, n_steps, n_stat
     return totalrewards, objectives
 
 
-def process_inf_riskaware_whittle(raWhittle, n_iterations, discount, n_steps, n_states, n_arms, n_choices, 
+def process_inf_riskaware_whittle(raWhittle, Whittle, n_discount, n_iterations, discount, n_steps, n_states, n_arms, n_choices, 
                                   threshold, rewards, transitions, initial_states, u_type, u_order):
 
     totalrewards = np.zeros((n_arms, n_iterations))
@@ -208,10 +208,14 @@ def process_inf_riskaware_whittle(raWhittle, n_iterations, discount, n_steps, n_
         states = initial_states.copy()
         for t in range(n_steps):
             discount_val = discount ** t
-            actions = raWhittle.take_action(n_choices, lifted, states, t)
+            if t < n_discount:
+                actions = raWhittle.take_action(n_choices, lifted, states, t)
+            else:
+                actions = Whittle.take_action(n_choices, states)
             for a in range(n_arms):
                 totalrewards[a, k] += discount_val * rewards[states[a], a]
-                lifted[a] = raWhittle.get_reward_partition(totalrewards[a, k])
+                if t < n_discount:
+                    lifted[a] = raWhittle.get_reward_partition(totalrewards[a, k])
                 states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
         for a in range(n_arms):
             objectives[a, k] = compute_utility(totalrewards[a, k], threshold, u_type, u_order)

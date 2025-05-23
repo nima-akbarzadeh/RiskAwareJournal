@@ -211,7 +211,7 @@ def run_multiple_inf_planning_combinations(param_list):
             print(f"{count} / {total}: {key_value} ---> MEAN-Rel-RN: {improve_obj_rn}")
             print(f"{count} / {total}: {key_value} ---> MEAN-Rel-UN: {improve_obj_un}")
             print('-'*20)
-            for _, value in zip(['df', 'nt', 'ns', 'ng', 'nc', 'ut', 'th', 'fr'], output[0].split('_')):
+            for _, value in zip(['df', 'nt', 'ns', 'ng', 'nd', 'nc', 'ut', 'th', 'fr'], output[0].split('_')):
                 param_key = f'{value}'
                 for i, avg_key in enumerate(eval_keys):
                     if param_key not in averages[avg_key]:
@@ -225,8 +225,8 @@ def run_a_inf_planning_combination(params):
 
     import time
     start_time = time.time()
-    df, nt, ns, ng, nc, ut, th, fr, n_iterations, save_flag, PATH = params
-    key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nc{nc}_ut{ut}_th{th}_fr{fr}'
+    df, nt, ns, ng, nd, nc, ut, th, fr, n_iterations, save_flag, PATH = params
+    key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nd{nd}_nc{nc}_ut{ut}_th{th}_fr{fr}'
     na = nc * ns
 
     rew_vals = rewards_inf(df, nt, na, ns)
@@ -240,7 +240,7 @@ def run_a_inf_planning_combination(params):
     Utility_Whittle = WhittleInf(ns, na, rew_utility_vals, markov_matrix, nt, df)
     Utility_Whittle.get_indices(ng, ng*ns*na)
 
-    RiskAware_Whittle = RiskAwareWhittleInf([ns, ng, nt], na, rew_vals, markov_matrix, df, ut[0], ut[1], th)
+    RiskAware_Whittle = RiskAwareWhittleInf([ns, ng, nd], na, rew_vals, markov_matrix, df, ut[0], ut[1], th)
     RiskAware_Whittle.get_indices(ng, ng*ns*na)
 
     nch = max(1, int(round(fr * na)))
@@ -249,7 +249,7 @@ def run_a_inf_planning_combination(params):
     processes = [
         ("Neutral", lambda *args: process_inf_neutral_whittle(Neutral_Whittle, *args)),
         ("RewUtility", lambda *args: process_inf_neutral_whittle(Utility_Whittle, *args)),
-        ("RiskAware", lambda *args: process_inf_riskaware_whittle(RiskAware_Whittle, *args))
+        ("RiskAware", lambda *args: process_inf_riskaware_whittle(RiskAware_Whittle, Neutral_Whittle, nd, *args))
     ]
 
     results = {}

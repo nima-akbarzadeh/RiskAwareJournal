@@ -4,12 +4,12 @@ import joblib
 import numpy
 import pandas as pd
 from collections import defaultdict
-import ast # To safely evaluate the tuple string for 'ut'
-from tqdm import tqdm # Import tqdm
+import ast  # To safely evaluate the tuple string for 'ut'
+from tqdm import tqdm  # Import tqdm
 
 # --- Configuration ---
 # IMPORTANT: Set this to the actual path where ALL your .joblib files are saved
-PATH = './planning-finite-May25/' # Example: '/path/to/output/data/'
+PATH = './planning-infinite-May25-Tset/'  # Example: '/path/to/output/data/'
 # --- End Configuration ---
 
 # Define the keys for evaluation metrics, same across all types
@@ -30,7 +30,12 @@ loaded_data = {
 }
 
 # Regex patterns for different filename structures
-df_present_pattern = re.compile(
+infinite_pattern = re.compile(
+    r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nd(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
+    r"_(Neutral|RewUtility|RiskAware)"
+    r"\.joblib$"
+)
+ns_finite_pattern = re.compile(
     r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
     r"_(Neutral|RewUtility|RiskAware)"
     r"\.joblib$"
@@ -53,11 +58,11 @@ try:
     joblib_files = [f for f in all_files if f.endswith(".joblib")]
     if not joblib_files:
         print("\nWarning: No '.joblib' files found in the specified directory.")
-        exit() # Exit if no files to process
+        exit()  # Exit if no files to process
     print(f"\nFound {len(joblib_files)} '.joblib' files to process.")
 except FileNotFoundError:
     print(f"\nError: Directory not found: {PATH}")
-    exit() # Exit if directory doesn't exist
+    exit()  # Exit if directory doesn't exist
 
 
 count_loaded = 0
@@ -66,7 +71,7 @@ file_counts = {'finite': 0, 'nonstationary': 0, 'infinite': 0}
 
 # 1. Load data from all joblib files and classify them
 # Wrap the joblib_files list with tqdm for the progress bar
-for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100): # Added tqdm wrapper
+for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100):
 
     matched = False
     experiment_type = None
@@ -75,21 +80,22 @@ for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100
     process_name = None
     na = None
 
-    # First, try matching the pattern WITH 'df'
-    match_df = df_present_pattern.match(filename)
-    if match_df:
+    # First, try matching the pattern WITH 'df' (for infinite and nonstationary)
+    # Since infinite_pattern and ns_finite_pattern are identical, we only need to use one.
+    match_with_df = infinite_pattern.match(filename)
+    if match_with_df:
         matched = True
         try:
-            df = float(match_df.group(1))
-            nt = int(match_df.group(2)) # Extract nt to classify
-            ns = int(match_df.group(3))
-            ng = int(match_df.group(4))
-            nc = int(match_df.group(5))
-            ut_str = match_df.group(6)
+            df = float(match_with_df.group(1))
+            nt = int(match_with_df.group(2))  # Extract nt to classify
+            ns = int(match_with_df.group(3))
+            ng = int(match_with_df.group(4))
+            nc = int(match_with_df.group(5))
+            ut_str = match_with_df.group(6)
             ut = ast.literal_eval(f"({ut_str})")
-            th = float(match_df.group(7))
-            fr = float(match_df.group(8))
-            process_name = match_df.group(9)
+            th = float(match_with_df.group(7))
+            fr = float(match_with_df.group(8))
+            process_name = match_with_df.group(9)
 
             params = {'df': df, 'nt': nt, 'ns': ns, 'ng': ng, 'nc': nc, 'ut': ut, 'th': th, 'fr': fr}
             key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nc{nc}_ut{ut}_th{th}_fr{fr}'
@@ -97,9 +103,9 @@ for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100
 
             # Classify based on 'nt' value
             if nt > 100:
-                 experiment_type = 'infinite'
-            else: # nt <= 100
-                 experiment_type = 'nonstationary'
+                experiment_type = 'infinite'
+            else:  # nt <= 100
+                experiment_type = 'nonstationary'
 
         except Exception as e:
             # Use tqdm.write for messages inside the loop to avoid interfering with the bar
@@ -111,7 +117,7 @@ for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100
         match_finite = finite_pattern.match(filename)
         if match_finite:
             matched = True
-            experiment_type = 'finite' # Classified as Finite
+            experiment_type = 'finite'  # Classified as Finite
             try:
                 nt = int(match_finite.group(1))
                 ns = int(match_finite.group(2))
@@ -150,15 +156,15 @@ for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100
         except Exception as e:
             tqdm.write(f"Warning: Could not load data from {filepath}. Error: {e}")
             count_skipped += 1
-    else: # File was .joblib but didn't match expected patterns or failed parsing
-        if matched == False: # Avoid double-warning if parsing failed above
+    else:  # File was .joblib but didn't match expected patterns or failed parsing
+        if not matched:  # Avoid double-warning if parsing failed above
             tqdm.write(f"Warning: Filename format mismatch, skipped: {filename}")
         count_skipped += 1
 
 
 # The rest of the script remains the same...
 
-print(f"\nFinished loading data.") # Print after the loop/progress bar finishes
+print(f"\nFinished loading data.")  # Print after the loop/progress bar finishes
 print(f"Successfully loaded data from {count_loaded} files.")
 print(f"  Finite: {file_counts['finite']} files")
 print(f"  Non-Stationary: {file_counts['nonstationary']} files")
@@ -182,8 +188,6 @@ for exp_type in ['finite', 'nonstationary', 'infinite']:
     processed_keys = 0
 
     # 2. Process each key_value combination within the type
-    # You could add a tqdm wrapper here too if processing is slow
-    # for key_value, process_data in tqdm(loaded_data[exp_type].items(), desc=f"Processing {exp_type}", unit="key"):
     for key_value, process_data in loaded_data[exp_type].items():
         if "Neutral" in process_data and "RewUtility" in process_data and "RiskAware" in process_data:
             n_res = process_data["Neutral"]
@@ -232,14 +236,13 @@ for exp_type in ['finite', 'nonstationary', 'infinite']:
             param_map['ut'] = str(param_map['ut'])
 
             for param_name, param_val in param_map.items():
-                 param_key = f"{param_name}_{param_val}"
-                 for i, avg_key in enumerate(eval_keys):
-                     averages[avg_key][param_key].append(calculated_values[i])
+                param_key = f"{param_name}_{param_val}"
+                for i, avg_key in enumerate(eval_keys):
+                    averages[avg_key][param_key].append(calculated_values[i])
 
             processed_keys += 1
         else:
-             # Use tqdm.write if you add a progress bar to this loop later
-             print(f"  Warning: Skipped key '{key_value}' for type '{exp_type}' due to missing process results (Neutral/RewUtility/RiskAware).")
+            print(f"  Warning: Skipped key '{key_value}' for type '{exp_type}' due to missing process results (Neutral/RewUtility/RiskAware).")
 
 
     print(f"Finished processing {processed_keys} parameter combinations for type '{exp_type}'.")
@@ -252,35 +255,23 @@ for exp_type in ['finite', 'nonstationary', 'infinite']:
     }
 
     # --- Start: Add natural sorting logic ---
-
-    # Get all unique parameter keys from the original averages data before final calculation
-    # This ensures we capture all keys even if some lists were empty
     unique_param_keys = set()
-    for avg_data in averages.values(): # 'averages' is the dict with lists of values
+    for avg_data in averages.values():
         unique_param_keys.update(avg_data.keys())
 
-    # Define the natural sort key function
     def natural_sort_key(s):
-        """
-        Create a sort key for natural sorting (e.g., 'item2' before 'item10').
-        Splits string into text and number parts. Handles floats/decimals too.
-        """
-        # Split based on digits OR digits with a decimal point
-        parts = re.split(r'(\d+\.?\d*|\d+)', s) 
+        parts = re.split(r'(\d+\.?\d*|\d+)', s)
         key = []
         for part in parts:
-            if not part: # Skip empty strings from split
+            if not part:
                 continue
-            # Try converting numerical parts to float for proper comparison
-            try: 
+            try:
                 key.append(float(part))
-            except ValueError: # Keep text parts as lowercase strings
+            except ValueError:
                 key.append(part.lower())
         return key
 
-    # Sort the unique keys naturally
     sorted_param_keys = sorted(list(unique_param_keys), key=natural_sort_key)
-
     # --- End: Add natural sorting logic ---
 
     # 4. Save results to Excel
@@ -306,21 +297,13 @@ for exp_type in ['finite', 'nonstationary', 'infinite']:
     # --- Saving averaged results (df_averages) with sorting ---
     print(f"Saving averaged results ({exp_type}) to: {averages_excel_path}")
     try:
-        # Create DataFrame for averaged results using the pre-calculated final_averages
         df_averages = pd.DataFrame(final_averages)
-
-        # Reindex the DataFrame using the naturally sorted keys
-        # This ensures the rows appear in the desired order
-        # Make sure the DataFrame actually contains the keys before reindexing
-        # Filter sorted_param_keys to only those present in the df index
         valid_sorted_keys = [key for key in sorted_param_keys if key in df_averages.index]
-        df_averages = df_averages.reindex(index=valid_sorted_keys) # Use only valid keys
+        df_averages = df_averages.reindex(index=valid_sorted_keys)
 
-        # Set column names and index name
         df_averages.columns = [f'MEAN-{col.replace("_", " ").title().replace(" ", "")}' for col in df_averages.columns]
-        df_averages.index.name = 'Param_Value' # Index now represents sorted parameter keys
+        df_averages.index.name = 'Param_Value'
 
-        # Save to Excel
         df_averages.to_excel(averages_excel_path)
         print(f"Averaged results ({exp_type}) saved successfully.")
     except Exception as e:
