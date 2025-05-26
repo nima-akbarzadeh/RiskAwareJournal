@@ -9,7 +9,7 @@ from tqdm import tqdm  # Import tqdm
 
 # --- Configuration ---
 # IMPORTANT: Set this to the actual path where ALL your .joblib files are saved
-PATH = './planning-infinite-May25-Tset/'  # Example: '/path/to/output/data/'
+PATH = './planning-infinite-May25-Dset/'  # Example: '/path/to/output/data/'
 # --- End Configuration ---
 
 # Define the keys for evaluation metrics, same across all types
@@ -90,22 +90,19 @@ for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100
             nt = int(match_with_df.group(2))  # Extract nt to classify
             ns = int(match_with_df.group(3))
             ng = int(match_with_df.group(4))
-            nc = int(match_with_df.group(5))
-            ut_str = match_with_df.group(6)
+            nd = int(match_with_df.group(5))
+            nc = int(match_with_df.group(6))
+            ut_str = match_with_df.group(7)
             ut = ast.literal_eval(f"({ut_str})")
-            th = float(match_with_df.group(7))
-            fr = float(match_with_df.group(8))
-            process_name = match_with_df.group(9)
+            th = float(match_with_df.group(8))
+            fr = float(match_with_df.group(9))
+            process_name = match_with_df.group(10)
 
-            params = {'df': df, 'nt': nt, 'ns': ns, 'ng': ng, 'nc': nc, 'ut': ut, 'th': th, 'fr': fr}
-            key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nc{nc}_ut{ut}_th{th}_fr{fr}'
+            params = {'df': df, 'nt': nt, 'ns': ns, 'ng': ng, 'nd': nd, 'nc': nc, 'ut': ut, 'th': th, 'fr': fr}
+            key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nd{nd}_nc{nc}_ut{ut}_th{th}_fr{fr}'
             na = nc * ns
 
-            # Classify based on 'nt' value
-            if nt > 100:
-                experiment_type = 'infinite'
-            else:  # nt <= 100
-                experiment_type = 'nonstationary'
+            experiment_type = 'infinite'
 
         except Exception as e:
             # Use tqdm.write for messages inside the loop to avoid interfering with the bar

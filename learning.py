@@ -285,8 +285,9 @@ def check_episode_condition(counts, counts_at_episode_start):
     return np.any(ratio > 2)
 
 
-def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold,
-                                             true_rew, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials):
+def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmnts, n_discounts, n_arms, n_choices, threshold,
+                                             true_rew, true_dyn, initial_states, u_type, u_order, plan_wip, plan_rawip, w_range, w_trials):
+
     # Initialization
     print(f"Iteration {i} (TSDE) starts ...")
     start_time = time.time()
@@ -317,8 +318,8 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
             for act in range(2):
                 est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0] # Sample from posterior
     # Create lern_wip object based on the *sampled* transitions for this episode
-    lern_wip = RiskAwareWhittleInf([n_states, n_augmnts, n_steps], n_arms, true_rew, est_transitions, discount, u_type, u_order, threshold)
-    lern_wip.get_indices(w_range, w_trials) # Compute policy (Whittle indices) for the episode
+    lern_rawip = RiskAwareWhittleInf([n_states, n_augmnts, n_discounts], n_arms, true_rew, est_transitions, discount, u_type, u_order, threshold)
+    lern_rawip.get_indices(w_range, w_trials)
     # ------------------------------------
 
     plan_totalrewards = np.zeros(n_arms)
@@ -366,29 +367,44 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
                         est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
 
             # Update the lern_wip object with the *newly sampled* transitions for this episode
-            lern_wip = RiskAwareWhittleInf([n_states, n_augmnts, n_steps], n_arms, true_rew, est_transitions, discount, u_type, u_order, threshold)
-            lern_wip.get_indices(w_range, w_trials) # Compute policy (Whittle indices) for the new episode
+            if t < n_discounts:
+                lern_rawip = RiskAwareWhittleInf([n_states, n_augmnts, n_discounts], n_arms, true_rew, est_transitions, discount, u_type, u_order, threshold)
+                lern_rawip.get_indices(w_range, w_trials)
+                lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps, discount)
+                lern_wip.get_indices(w_range, w_trials)
+            else:
+                lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps, discount)
+                lern_wip.get_indices(w_range, w_trials)
+
         # --- End TSDE Episode Check ---
 
         # Use the policy computed at the start of the *current* episode k
-        discount_val = discount ** t
-        actions = plan_wip.take_action(n_choices, lifted, states, t)
-        learn_actions = lern_wip.take_action(n_choices, learn_lifted, learn_states, t)
+        if t < n_discounts:
+            actions = plan_rawip.take_action(n_choices, lifted, states, t)
+            learn_actions = lern_rawip.take_action(n_choices, learn_lifted, learn_states, t)
+        else:
+            actions = plan_wip.take_action(n_choices, states)
+            learn_actions = lern_wip.take_action(n_choices, learn_states)
         _learn_states = np.copy(learn_states)
+        discount_val = discount ** t
         for a in range(n_arms):
             plan_totalrewards[a] += discount_val * true_rew[states[a], a]
-            lifted[a] = plan_wip.get_reward_partition(plan_totalrewards[a])
-            states[a] = np.random.choice(n_states, p=true_dyn[states[a], :, actions[a], a])
             learn_totalrewards[a] += discount_val * true_rew[learn_states[a], a]
-            learn_lifted[a] = lern_wip.get_reward_partition(learn_totalrewards[a])
+            if t < n_discounts:
+                lifted[a] = plan_rawip.get_reward_partition(plan_totalrewards[a])
+                learn_lifted[a] = lern_rawip.get_reward_partition(learn_totalrewards[a])
+            states[a] = np.random.choice(n_states, p=true_dyn[states[a], :, actions[a], a])
             learn_states[a] = np.random.choice(n_states, p=true_dyn[learn_states[a], :, learn_actions[a], a])
             counts[_learn_states[a], learn_states[a], learn_actions[a], a] += 1
             results["learn_transitionerrors"][t, a] = np.max(np.abs(est_transitions[:, :, :, a] - true_dyn[:, :, :, a]))
-            results["learn_indexerrors"][t, a] = np.max(np.abs(lern_wip.whittle_indices[a] - plan_wip.whittle_indices[a]))
             results["plan_rewards"][t, a] = plan_totalrewards[a]
             results["plan_objectives"][t, a] = compute_utility(plan_totalrewards[a], threshold, u_type, u_order)
             results["learn_rewards"][t, a] = learn_totalrewards[a]
             results["learn_objectives"][t, a] = compute_utility(learn_totalrewards[a], threshold, u_type, u_order)
+            if t < n_discounts:
+                results["learn_indexerrors"][t, a] = np.max(np.abs(lern_rawip.whittle_indices[a] - plan_rawip.whittle_indices[a]))
+            else:
+                results["learn_indexerrors"][t, a] = np.max(np.abs(lern_wip.whittle_indices[a] - plan_wip.whittle_indices[a]))
             # print(f"t={t}, a={a}, states={states[a]}, learn_states={learn_states[a]}")
             # print(f"t={t}, a={a}, plan_rew={true_rew[states[a], a]}, learn_rew={true_rew[learn_states[a], a]}, discount_val={discount_val}")
             # print(f"t={t}, a={a}, plan_rewards={results['plan_rewards'][t, a]}, learn_rewards={results['learn_rewards'][t, a]}")
@@ -399,17 +415,21 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
 
 
 def multiprocess_inf_learn_LRAPTSDE(
-        n_iterations, discount, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, 
+        n_iterations, discount, n_steps, n_states, n_augmnts, n_discounts, n_arms, n_choices, threshold, 
         true_rew, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
         ):
     num_workers = cpu_count() - 1
 
-    plan_wip = RiskAwareWhittleInf([n_states, n_augmnts, n_steps], n_arms, true_rew, true_dyn, discount, u_type, u_order, threshold)
+    plan_wip = WhittleInf(n_states, n_arms, true_rew, true_dyn, n_steps, discount)
     plan_wip.get_indices(w_range, w_trials)
+
+    plan_rawip = RiskAwareWhittleInf([n_states, n_augmnts, n_discounts], n_arms, true_rew, true_dyn, discount, u_type, u_order, threshold)
+    plan_rawip.get_indices(w_range, w_trials)
 
     # Define arguments for each iteration
     args = [
-        (i, discount, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials) 
+        (i, discount, n_steps, n_states, n_augmnts, n_discounts, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, 
+         u_order, plan_wip, plan_rawip, w_range, w_trials) 
         for i in range(n_iterations)
     ]
 

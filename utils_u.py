@@ -350,7 +350,7 @@ def run_ns_learning_combination(params):
 
 
 def run_inf_learning_combination(params):
-    df, nt, ns, ng, na, tt, ut, th, nc, n_iterations, save_data, PATH = params
+    df, nt, ns, ng, nd, na, tt, ut, th, nc, n_iterations, save_data, PATH = params
 
     if tt == 'structured':
         prob_remain = numpy.round(numpy.linspace(0.1 / ns, 0.1 / ns, na), 2)
@@ -370,15 +370,15 @@ def run_inf_learning_combination(params):
         prob_remain = [pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1]
         ns=3
 
-    key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_na{na}_tt{tt}_ut{ut}_th{th}_nc{nc}'
-    rew_vals = rewards_ns(df, nt, na, ns)
+    key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nd{nd}_na{na}_tt{tt}_ut{ut}_th{th}_nc{nc}'
+    rew_vals = rewards_inf(df, nt, na, ns)
     markov_matrix = get_transitions(na, ns, prob_remain, tt)
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
     w_range = ng
-    w_trials = ng*ns
+    w_trials = ng*ns*na
 
     prob_err_lr, indx_err_lr, _, obj_lr, _, obj_n = multiprocess_inf_learn_LRAPTSDE(
-        n_iterations, df, nt, ns, ng, na, nc, th, rew_vals, markov_matrix, initial_states, ut[0], ut[1], 
+        n_iterations, df, nt, ns, ng, nd, na, nc, th, rew_vals, markov_matrix, initial_states, ut[0], ut[1], 
         save_data, f'{PATH}inf_riskaware_{key_value}.joblib', w_range, w_trials
     )
     process_and_plot(prob_err_lr, indx_err_lr, obj_n, obj_lr, 'lr', PATH, key_value)
