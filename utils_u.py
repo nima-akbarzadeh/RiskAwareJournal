@@ -388,7 +388,8 @@ def run_avg_learning_combination(params):
     nt, ns, na, tt, nc, n_iterations, save_data, PATH = params
 
     if tt == 'structured':
-        prob_remain = numpy.round(numpy.linspace(0.1 / ns, 0.1 / ns, na), 2)
+        prob_remain = numpy.round(numpy.linspace(0.1 / ns, 1 / ns, na), 2)
+        print(prob_remain)
     elif tt == 'clinical':
         pr_ss_0 = numpy.round(numpy.linspace(0.657, 0.762, na), 3)
         numpy.random.shuffle(pr_ss_0)
@@ -402,7 +403,7 @@ def run_avg_learning_combination(params):
         numpy.random.shuffle(pr_sp_1)
         pr_pp_1 = numpy.round(numpy.linspace(0.879, 0.921, na), 3)
         numpy.random.shuffle(pr_pp_1)
-        prob_remain = [pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1]
+        prob_remain = numpy.array([pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1])
         ns=3
 
     key_value = f'nt{nt}_ns{ns}_na{na}_tt{tt}_nc{nc}'

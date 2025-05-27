@@ -56,9 +56,11 @@ def estimate_structured_transition_probabilities(
         alpha[a] += stay_count
         beta[a] += leave_count
         
-        # Return posterior mean
-        prob_remain[a] = alpha[a] / (alpha[a] + beta[a])
+        # Return a sample from posterior
+        # Posterior mean: alpha[a] / (alpha[a] + beta[a])
+        prob_remain[a] = np.random.beta(alpha[a], beta[a]) 
     
+    print(prob_remain)
     return get_transitions(num_arms, num_states, prob_remain, 'structured'), alpha, beta
 
 
@@ -660,7 +662,7 @@ def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, tr
     }
 
     # Initialize counts (posterior beliefs) - start with prior (e.g., 1)
-    counts = np.ones((n_states, n_states, 2, n_arms))
+    counts = np.ones((n_states, n_states, 2, n_arms), dtype=np.int16)
 
     # --- TSDE Specific Initialization ---
     k = 0  # Episode counter
@@ -721,7 +723,7 @@ def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, tr
             k += 1
             t_k = t # New episode starts *at* the beginning of step t
             counts_at_episode_start = np.copy(counts) # Store current counts
-            # print(f"  t={t}: Starting Episode k={k} (Reason: {reason})") # <<< Updated Print Statement
+            print(f"  t={t}: Starting Episode k={k} (Reason: {reason})") # <<< Updated Print Statement
 
             # Sample new transitions from the updated posterior (counts)
             if trans_type == 'structured':
@@ -752,6 +754,10 @@ def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, tr
             results["learn_indexerrors"][t, a] = np.max(np.abs(lern_wip.whittle_indices[a] - plan_wip.whittle_indices[a]))
             results["plan_rewards"][t, a] = plan_totalrewards[a]
             results["learn_rewards"][t, a] = learn_totalrewards[a]
+            est_transitions[:, :, :, a]
+            true_dyn[:, :, :, a]
+
+
 
     print(f"Iteration {i} (TSDE) end with duration: {time.time() - start_time}")
     return results
