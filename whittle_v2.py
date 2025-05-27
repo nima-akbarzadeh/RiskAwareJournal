@@ -606,32 +606,97 @@ class WhittleInf(BaseWhittleInf):
         super().__init__(num_states, num_arms, transition, horizon, discount)
         self.reward = reward
     
-    def bellman(self, arm: int, penalty: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Value iteration with Bellman operator."""
+    def bellman(self, arm: int, penalty: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+        """Value iteration with Bellman operator for average reward (undiscounted) problems."""
         V = np.zeros(self.num_x, dtype=np.float32)
         Q = np.zeros((self.num_x, 2), dtype=np.float32)
         pi = np.zeros(self.num_x, dtype=np.int32)
+
+        if self.discount == 1:
         
-        penalty_term = penalty
-        if self.discount != 1:
+            # Initialize average reward estimate
+            rho = 0.0  # Average reward per time step
+
+            penalty_term = penalty
+            
+            for iteration in range(self.horizon):
+                v_prev = V.copy()
+                rho_prev = rho
+                
+                # Vectorized Q-value computation for average reward
+                # Q(s,a) = r(s,a) - rho + sum_s' P(s'|s,a) * V(s')
+                Q[:, 0] = self.reward[:, arm] - rho + (self.transition[:, :, 0, arm] @ V)
+                Q[:, 1] = self.reward[:, arm] - penalty_term - rho + (self.transition[:, :, 1, arm] @ V)
+                
+                # Optimal policy and value
+                pi = np.argmax(Q, axis=1)
+                V = np.max(Q, axis=1)
+                
+                # Update average reward estimate using the Bellman equation
+                # For average reward: rho = max_a [r(s,a) + sum_s' P(s'|s,a) * (V(s') - V(s))]
+                # We can estimate rho from the difference in value functions
+                rho = np.mean(V - v_prev)
+                
+                # Alternative: Use policy evaluation to estimate average reward
+                # This is more stable but requires solving for steady-state
+                if iteration > 10:  # Allow some iterations for V to stabilize
+                    # Estimate steady-state distribution under current policy
+                    pi_transitions = np.zeros((self.num_x, self.num_x))
+                    pi_rewards = np.zeros(self.num_x)
+                    
+                    for s in range(self.num_x):
+                        action = pi[s]
+                        pi_transitions[s, :] = self.transition[s, :, action, arm]
+                        pi_rewards[s] = self.reward[s, arm]
+                        if action == 1:  # Active action
+                            pi_rewards[s] -= penalty
+                    
+                    # Solve for steady-state: π * P = π, sum π = 1
+                    try:
+                        # Create matrix (P^T - I) with additional constraint sum π = 1
+                        A = pi_transitions.T - np.eye(self.num_x)
+                        A = np.vstack([A, np.ones(self.num_x)])
+                        b = np.zeros(self.num_x + 1)
+                        b[-1] = 1
+                        
+                        # Solve least squares (overdetermined system)
+                        steady_state, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+                        
+                        if np.all(steady_state >= 0) and np.abs(np.sum(steady_state) - 1) < 1e-6:
+                            rho = np.dot(steady_state, pi_rewards)
+                    except np.linalg.LinAlgError:
+                        # Fall back to simple estimate if steady-state computation fails
+                        pass
+                
+                # Check convergence for both value function and average reward
+                v_conv = np.max(np.abs(V - v_prev)) < self.convergence_tol
+                rho_conv = abs(rho - rho_prev) < self.convergence_tol
+                
+                if v_conv and rho_conv and iteration > 20:  # Ensure sufficient iterations
+                    break
+            
+            return pi, V, Q
+    
+        else:
+        
             penalty_term = (1 - self.discount) * penalty
-        
-        for iteration in range(self.horizon):
-            v_prev = V.copy()
             
-            # Vectorized Q-value computation
-            Q[:, 0] = self.reward[:, arm] + self.discount * (self.transition[:, :, 0, arm] @ V)
-            Q[:, 1] = self.reward[:, arm] - penalty_term + self.discount * (self.transition[:, :, 1, arm] @ V)
+            for iteration in range(self.horizon):
+                v_prev = V.copy()
+                
+                # Vectorized Q-value computation
+                Q[:, 0] = self.reward[:, arm] + self.discount * (self.transition[:, :, 0, arm] @ V)
+                Q[:, 1] = self.reward[:, arm] - penalty_term + self.discount * (self.transition[:, :, 1, arm] @ V)
+                
+                # Optimal policy and value
+                pi = np.argmax(Q, axis=1)
+                V = np.max(Q, axis=1)
+                
+                # Check convergence
+                if np.max(np.abs(V - v_prev)) < self.convergence_tol:
+                    break
             
-            # Optimal policy and value
-            pi = np.argmax(Q, axis=1)
-            V = np.max(Q, axis=1)
-            
-            # Check convergence
-            if np.max(np.abs(V - v_prev)) < self.convergence_tol:
-                break
-        
-        return pi, V, Q
+            return pi, V, Q
     
     def indexability_check(self, arm_indices: np.ndarray, nxt_pol: np.ndarray,
                           ref_pol: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:

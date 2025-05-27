@@ -304,8 +304,8 @@ def run_learning_combination(params):
     rew_vals = rewards(nt, na, ns)
     markov_matrix = get_transitions(na, ns, prob_remain, tt)
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
-    w_range = nt
-    w_trials = nt*ns
+    w_range = 2*nt
+    w_trials = nt*ns*na
 
     prob_err_lr, indx_err_lr, _, obj_lr, _, obj_r = multiprocess_learn_LRAPTS(
         n_iterations, l_episodes, n_episodes, nt, ns, na, nc, th, rew_vals, tt, markov_matrix, initial_states, ut[0], ut[1], 
@@ -339,8 +339,8 @@ def run_ns_learning_combination(params):
     rew_vals = rewards_ns(df, nt, na, ns)
     markov_matrix = get_transitions(na, ns, prob_remain, tt)
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
-    w_range = ng
-    w_trials = ng*ns
+    w_range = 2*nt
+    w_trials = nt*ns*na
 
     prob_err_lr, indx_err_lr, _, obj_lr, _, obj_r = multiprocess_ns_learn_LRAPTS(
         n_iterations, l_episodes, n_episodes, nt, ns, ng, na, nc, th, rew_vals, tt, markov_matrix, initial_states, ut[0], ut[1], 
@@ -374,7 +374,7 @@ def run_inf_learning_combination(params):
     rew_vals = rewards_inf(df, nt, na, ns)
     markov_matrix = get_transitions(na, ns, prob_remain, tt)
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
-    w_range = ng
+    w_range = 2*ng
     w_trials = ng*ns*na
 
     prob_err_lr, indx_err_lr, _, obj_lr, _, obj_n = multiprocess_inf_learn_LRAPTSDE(
@@ -410,8 +410,8 @@ def run_avg_learning_combination(params):
     rew_vals = rewards(nt, na, ns)
     markov_matrix = get_transitions(na, ns, prob_remain, tt)
     initial_states = (ns - 1) * numpy.ones(na, dtype=numpy.int32)
-    w_range = 1
-    w_trials = 100
+    w_range = nt
+    w_trials = nt*ns*na
 
     prob_err_lr, indx_err_lr, rew_lr, rew_n = multiprocess_avg_learn_TSDE(
         n_iterations, nt, ns, na, nc, rew_vals, tt, markov_matrix, initial_states, 

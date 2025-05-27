@@ -13,8 +13,8 @@ def main():
             'n_steps': [n_steps],
             'n_states': [5],
             'n_arms': [5],
-            # 'transition_type': ['structured'],
-            'transition_type': ['clinical'],
+            'transition_type': ['structured'],
+            # 'transition_type': ['clinical'],
             'arm_choices': [1]
         },
         # {
