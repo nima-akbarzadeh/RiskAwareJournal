@@ -8,29 +8,31 @@ def main():
     param_sets_list = [
         {
             'discount_factors': [0.9, 0.99],
-            'n_steps': [5, 10],
-            'n_states': [4, 5],
+            'n_steps': [5],
+            'n_states': [3, 4],
+            'n_augmnt': [50],
             'n_arms': [3, 4, 5],
             'transition_type': ['structured'],
-            'utility_functions': [(1, 0), (2, 4), (3, 16)],
-            'thresholds': [0.2, 0.5, 0.7],
+            'utility_functions': [(2, 8), (3, 8)],
+            'thresholds': [0.5],
             'arm_choices': [1]
         },
         {
             'discount_factors': [0.9, 0.99],
-            'n_steps': [5, 10],
+            'n_steps': [5],
             'n_states': [3],
+            'n_augmnt': [50],
             'n_arms': [3, 4, 5],
             'transition_type': ['clinical'],
-            'utility_functions': [(1, 0), (2, 4), (3, 16)],
-            'thresholds': [0.2, 0.5, 0.7],
+            'utility_functions': [(2, 8), (3, 8)],
+            'thresholds': [0.5],
             'arm_choices': [1]
         },
     ]
 
     learning_episodes = 500
-    n_averaging_episodes = 10
-    n_iterations = 100
+    n_averaging_episodes = 5
+    n_iterations = 20
 
     save_data = True
     PATH = f'./learning-nsfinite-{learning_episodes}-{n_averaging_episodes}-{n_iterations}/'
@@ -44,6 +46,7 @@ def main():
             param_sets['discount_factors'],
             param_sets['n_steps'],
             param_sets['n_states'],
+            param_sets['n_augmnt'],
             param_sets['n_arms'],
             param_sets['transition_type'],
             param_sets['utility_functions'],
