@@ -577,8 +577,8 @@ def process_inf_learn_LRAPTS_iteration(i, discount, n_steps, n_states, n_augmnts
     for t in range(n_steps):
         
         discount_val = discount ** t
-        actions = plan_wip.take_action(n_choices, lifted, states, t)
-        learn_actions = lern_wip.take_action(n_choices, learn_lifted, learn_states, t)
+        actions = plan_wip.take_action(n_choices, {"l": lifted, "x": states, "t": t})
+        learn_actions = lern_wip.take_action(n_choices, {"l": learn_lifted, "x": learn_states, "t": t})
         _learn_states = np.copy(learn_states)
         for a in range(n_arms):
             plan_totalrewards[a] += discount_val * true_rew[states[a], a]
@@ -683,7 +683,7 @@ def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, tr
                 for act in range(2):
                     est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
     # Create lern_wip object based on the *sampled* transitions for this episode
-    lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions)
+    lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps)
     lern_wip.get_indices(w_range, w_trials) # Compute policy (Whittle indices) for the episode
     # ------------------------------------
 
@@ -734,13 +734,13 @@ def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, tr
                             est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
 
             # Update the lern_wip object with the *newly sampled* transitions for this episode
-            lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions)
+            lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps)
             lern_wip.get_indices(w_range, w_trials) # Compute policy (Whittle indices) for the new episode
         # --- End TSDE Episode Check ---
 
         # Use the policy computed at the start of the *current* episode k
-        actions = plan_wip.take_action(n_choices, states)
-        learn_actions = lern_wip.take_action(n_choices, learn_states)
+        actions = plan_wip.take_action(n_choices, {"x": states})
+        learn_actions = lern_wip.take_action(n_choices, {"x": learn_states})
         _learn_states = np.copy(learn_states)
         for a in range(n_arms):
             plan_totalrewards[a] += true_rew[states[a], a]
@@ -763,7 +763,7 @@ def multiprocess_avg_learn_TSDE(
         ):
     num_workers = cpu_count() - 1
 
-    plan_wip = WhittleInf(n_states, n_arms, true_rew, true_dyn)
+    plan_wip = WhittleInf(n_states, n_arms, true_rew, true_dyn, n_steps)
     plan_wip.get_indices(w_range, w_trials)
 
     # Define arguments for each iteration

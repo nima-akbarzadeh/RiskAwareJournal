@@ -612,7 +612,9 @@ class WhittleInf(BaseWhittleInf):
         Q = np.zeros((self.num_x, 2), dtype=np.float32)
         pi = np.zeros(self.num_x, dtype=np.int32)
         
-        penalty_term = (1 - self.discount) * penalty
+        penalty_term = penalty
+        if self.discount != 1:
+            penalty_term = (1 - self.discount) * penalty
         
         for iteration in range(self.horizon):
             v_prev = V.copy()
@@ -760,45 +762,3 @@ class RiskAwareWhittleInf(BaseWhittleInf):
         
         return self._select_arms_by_indices(current_indices, n_choices)
 
-
-# ============================================================================
-# Usage Examples
-# ============================================================================
-
-"""
-Example usage of the modular Whittle index implementation:
-
-# 1. Standard Whittle Index
-whittle = Whittle(num_states=3, num_arms=5, reward=rewards, 
-                  transition=transitions, horizon=10)
-whittle.get_indices(index_range=10.0, n_trials=100)
-
-# 2. Nonstationary Whittle Index
-whittle_ns = WhittleNS(num_states=3, num_arms=5, reward=time_dependent_rewards,
-                       transition=transitions, horizon=10)
-whittle_ns.get_indices(index_range=10.0, n_trials=100)
-
-# 3. Risk-Aware Whittle Index
-ra_whittle = RiskAwareWhittle(num_states=3, num_arms=5, rewards=rewards,
-                              transition=transitions, horizon=10,
-                              u_type='exp', u_order=2.0, threshold=0.5)
-ra_whittle.get_indices(index_range=10.0, n_trials=100)
-
-# 4. Using the static binary search directly
-def my_backward(arm, penalty):
-    # Custom backward induction
-    pass
-
-def my_indexability_check(indices, nxt_pol, ref_pol, penalty, arm):
-    # Custom indexability check
-    pass
-
-indices = WhittleBinarySearch.compute_indices(
-    num_arms=5,
-    backward_func=my_backward,
-    indexability_check_func=my_indexability_check,
-    policy_equal_func=lambda p1, p2: np.array_equal(p1, p2),
-    index_range=10.0,
-    n_trials=100
-)
-"""
