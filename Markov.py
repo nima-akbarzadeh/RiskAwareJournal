@@ -1,6 +1,6 @@
 ### Problem Parameters
 import numpy as np
-from processes import compute_utility
+from utils import compute_utility
 
 
 # Define the reward values for each arm

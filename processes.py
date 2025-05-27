@@ -1,16 +1,5 @@
 import numpy as np
-
-
-def compute_utility(total_reward, threshold, u_type, u_order):
-    if u_type == 1:
-        if total_reward - threshold >= 0:
-            return 1
-        else:
-            return 0
-    elif u_type == 2:
-        return 1 - threshold**(- 1/u_order) * (np.maximum(0, threshold - total_reward))**(1/u_order)
-    else:
-        return (1 + np.exp(-u_order * (1 - threshold))) / (1 + np.exp(-u_order * (total_reward - threshold)))
+from utils import compute_utility
 
 
 def process_neutral_whittle(Whittle, n_iterations, n_steps, n_states, n_arms, n_choices, 

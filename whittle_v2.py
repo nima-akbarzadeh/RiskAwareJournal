@@ -338,11 +338,10 @@ class RiskAwareWhittle(BaseWhittle):
     
     def backward(self, arm: int, penalty: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Backward induction with lifted state space."""
-        n_aug = self.n_augment[arm]
         
-        V = np.zeros((n_aug, self.num_x, self.horizon + 1), dtype=np.float32)
-        Q = np.zeros((n_aug, self.num_x, self.horizon, 2), dtype=np.float32)
-        pi = np.zeros((n_aug, self.num_x, self.horizon), dtype=np.int32)
+        V = np.zeros((self.n_augment[arm], self.num_x, self.horizon + 1), dtype=np.float32)
+        Q = np.zeros((self.n_augment[arm], self.num_x, self.horizon, 2), dtype=np.float32)
+        pi = np.zeros((self.n_augment[arm], self.num_x, self.horizon), dtype=np.int32)
         
         # Terminal values
         V[:, :, self.horizon] = self.all_utility_values[arm][:, np.newaxis]
@@ -354,7 +353,7 @@ class RiskAwareWhittle(BaseWhittle):
             
             for l in range(n_real):
                 for x in range(self.num_x):
-                    nxt_l = np.clip(l + x, 0, n_aug - 1)
+                    nxt_l = np.clip(l + x, 0, self.n_augment[arm] - 1)
                     
                     # Q-values using matrix multiplication
                     Q[l, x, t, 0] = self.transition[x, :, 0, arm] @ V[nxt_l, :, t + 1]

@@ -6,9 +6,63 @@ from multiprocessing import Pool, cpu_count
 import numpy as np
 import joblib
 import time
+from Markov import *
 
 
-def process_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order, 
+def estimate_structured_transition_probabilities(
+    arm_counts: np.ndarray,
+    alpha: np.ndarray,
+    beta: np.ndarray
+) -> np.ndarray:
+    """
+    Bayesian estimation of prob_remain for a single arm using conjugate Beta prior.
+    
+    Args:
+        arm_counts: Counts for single arm, shape (num_states, num_states, 2, num_arms)
+        alpha: Beta prior for staying probability
+        beta: Beta prior for leaving probability
+    
+    Returns:
+        Estimated prob_remain parameter
+    """
+    num_states = arm_counts.shape[0]
+    num_arms = arm_counts.shape[-1]
+
+    prob_remain = np.zeros(num_arms)
+    for a in range(num_arms):
+
+        # Count transitions that follow the "stay" pattern vs "leave" pattern
+        stay_count = 0
+        leave_count = 0
+        
+        # For action 1 transitions
+        for s in range(num_states - 1):
+            # Expected stay probability: (num_states - s - 1) * p
+            # Count actual stays
+            stay_count += arm_counts[s, s, 1, a]
+            # Count transitions to last state (leaves)
+            leave_count += arm_counts[s, num_states - 1, 1, a]
+        
+        # For action 0 transitions (more complex pattern)
+        # State 0 always stays at 0
+        # For other states, we need to infer from the pattern
+        for s in range(1, num_states):
+            # Diagonal elements have probability (num_states - s) * p
+            stay_count += arm_counts[s, s, 0, a] / (num_states - s)
+            # Transitions to state 0
+            leave_count += arm_counts[s, 0, 0, a]
+        
+        # Posterior Beta distribution parameters
+        alpha[a] += stay_count
+        beta[a] += leave_count
+        
+        # Return posterior mean
+        prob_remain[a] = alpha[a] / (alpha[a] + beta[a])
+    
+    return get_transitions(num_arms, num_states, prob_remain, 'structured'), alpha, beta
+
+
+def process_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order, 
                                    plan_wip, w_range, w_trials):
 
     # Initialization
@@ -24,11 +78,16 @@ def process_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states,
     }
 
     # Set up learning dynamics
-    est_transitions = np.zeros((n_states, n_states, 2, n_arms))
-    for a in range(n_arms):
-        for s1 in range(n_states):
-            for act in range(2):
-                est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))
+    if trans_type == 'structured':
+        alpha = np.ones(n_arms)
+        beta = np.ones(n_arms)
+        est_transitions, alpha, beta = estimate_structured_transition_probabilities(np.zeros((n_states, n_states, 2, n_arms)), alpha, beta)
+    else:
+        est_transitions = np.zeros((n_states, n_states, 2, n_arms))
+        for a in range(n_arms):
+            for s1 in range(n_states):
+                for act in range(2):
+                    est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
     lern_wip = RiskAwareWhittle(n_states, n_arms, true_rew, est_transitions, n_steps, u_type, u_order, threshold)
     lern_wip.get_indices(w_range, w_trials)
     counts = np.ones((n_states, n_states, 2, n_arms))
@@ -39,11 +98,14 @@ def process_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states,
         counts += cnts
 
         # Update transitions
-        est_transitions = np.zeros((n_states, n_states, 2, n_arms))
-        for a in range(n_arms):
-            for s1 in range(n_states):
-                for act in range(2):
-                    est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])
+        if trans_type == 'structured':
+            est_transitions, alpha, beta = estimate_structured_transition_probabilities(counts, alpha, beta)
+        else:
+            est_transitions = np.zeros((n_states, n_states, 2, n_arms))
+            for a in range(n_arms):
+                for s1 in range(n_states):
+                    for act in range(2):
+                        est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
         lern_wip = RiskAwareWhittle(n_states, n_arms, true_rew, est_transitions, n_steps, u_type, u_order, threshold)
         lern_wip.get_indices(w_range, w_trials)
 
@@ -61,7 +123,7 @@ def process_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states,
 
 def multiprocess_learn_LRAPTS(
         n_iterations, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, 
-        true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
+        trans_type, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
         ):
     num_workers = cpu_count() - 1
 
@@ -70,7 +132,7 @@ def multiprocess_learn_LRAPTS(
 
     # Define arguments for each iteration
     args = [
-        (i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials) 
+        (i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials) 
         for i in range(n_iterations)
     ]
 
@@ -93,7 +155,7 @@ def multiprocess_learn_LRAPTS(
 
 
 def process_learn_LRNPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, 
-                                   true_rew, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials):
+                                   true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials):
 
     # Initialization
     print(f"Iteration {i} starts ...")
@@ -108,26 +170,34 @@ def process_learn_LRNPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states,
     }
 
     # Set up learning dynamics
-    est_transitions = np.zeros((n_states, n_states, 2, n_arms))
-    for a in range(n_arms):
-        for s1 in range(n_states):
-            for act in range(2):
-                est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))
+    if trans_type == 'structured':
+        alpha = np.ones(n_arms)
+        beta = np.ones(n_arms)
+        est_transitions, alpha, beta = estimate_structured_transition_probabilities(np.zeros((n_states, n_states, 2, n_arms)), alpha, beta)
+    else:
+        est_transitions = np.zeros((n_states, n_states, 2, n_arms))
+        for a in range(n_arms):
+            for s1 in range(n_states):
+                for act in range(2):
+                    est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
     lern_wip = Whittle(n_states, n_arms, true_rew, est_transitions, n_steps)
     lern_wip.get_indices(w_range, w_trials)
     counts = np.ones((n_states, n_states, 2, n_arms))
 
     for l in range(l_episodes):
         plan_totalrewards, plan_objectives, learn_totalrewards, learn_objectives, cnts = \
-            process_neutral_whittle_learning(plan_wip, lern_wip, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order)
+            process_neutral_whittle_learning(plan_wip, lern_wip, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order)
         counts += cnts
 
         # Update transitions
-        est_transitions = np.zeros((n_states, n_states, 2, n_arms))
-        for a in range(n_arms):
-            for s1 in range(n_states):
-                for act in range(2):
-                    est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])
+        if trans_type == 'structured':
+            est_transitions, alpha, beta = estimate_structured_transition_probabilities(counts, alpha, beta)
+        else:
+            est_transitions = np.zeros((n_states, n_states, 2, n_arms))
+            for a in range(n_arms):
+                for s1 in range(n_states):
+                    for act in range(2):
+                        est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
         lern_wip = Whittle(n_states, n_arms, true_rew, est_transitions, n_steps)
         lern_wip.get_indices(w_range, w_trials)
 
@@ -145,7 +215,7 @@ def process_learn_LRNPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states,
 
 def multiprocess_learn_LRNPTS(
         n_iterations, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, 
-        true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
+        trans_type, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
         ):
     num_workers = cpu_count() - 1
 
@@ -154,7 +224,7 @@ def multiprocess_learn_LRNPTS(
 
     # Define arguments for each iteration
     args = [
-        (i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials) 
+        (i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials) 
         for i in range(n_iterations)
     ]
 
@@ -177,7 +247,7 @@ def multiprocess_learn_LRNPTS(
 
 
 def process_ns_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, 
-                                      true_rew, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials):
+                                      true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials):
 
     # Initialization
     print(f"Iteration {i} starts ...")
@@ -192,11 +262,16 @@ def process_ns_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_stat
     }
 
     # Set up learning dynamics
-    est_transitions = np.zeros((n_states, n_states, 2, n_arms))
-    for a in range(n_arms):
-        for s1 in range(n_states):
-            for act in range(2):
-                est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))
+    if trans_type == 'structured':
+        alpha = np.ones(n_arms)
+        beta = np.ones(n_arms)
+        est_transitions, alpha, beta = estimate_structured_transition_probabilities(np.zeros((n_states, n_states, 2, n_arms)), alpha, beta)
+    else:
+        est_transitions = np.zeros((n_states, n_states, 2, n_arms))
+        for a in range(n_arms):
+            for s1 in range(n_states):
+                for act in range(2):
+                    est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
     lern_wip = RiskAwareWhittleNS([n_states, n_augmnts], n_arms, true_rew, est_transitions, n_steps, u_type, u_order, threshold)
     lern_wip.get_indices(w_range, w_trials)
     counts = np.ones((n_states, n_states, 2, n_arms))
@@ -207,11 +282,14 @@ def process_ns_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_stat
         counts += cnts
 
         # Update transitions
-        est_transitions = np.zeros((n_states, n_states, 2, n_arms))
-        for a in range(n_arms):
-            for s1 in range(n_states):
-                for act in range(2):
-                    est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])
+        if trans_type == 'structured':
+            est_transitions, alpha, beta = estimate_structured_transition_probabilities(counts, alpha, beta)
+        else:
+            est_transitions = np.zeros((n_states, n_states, 2, n_arms))
+            for a in range(n_arms):
+                for s1 in range(n_states):
+                    for act in range(2):
+                        est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
         lern_wip = RiskAwareWhittleNS([n_states, n_augmnts], n_arms, true_rew, est_transitions, n_steps, u_type, u_order, threshold)
         lern_wip.get_indices(w_range, w_trials)
 
@@ -229,7 +307,7 @@ def process_ns_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_stat
 
 def multiprocess_ns_learn_LRAPTS(
         n_iterations, l_episodes, n_episodes, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, 
-        true_rew, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
+        true_rew, trans_type, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
         ):
     num_workers = cpu_count() - 1
 
@@ -238,7 +316,7 @@ def multiprocess_ns_learn_LRAPTS(
 
     # Define arguments for each iteration
     args = [
-        (i, l_episodes, n_episodes, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, 
+        (i, l_episodes, n_episodes, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, 
          u_type, u_order, plan_wip, w_range, w_trials) 
         for i in range(n_iterations)
     ]
@@ -286,7 +364,7 @@ def check_episode_condition(counts, counts_at_episode_start):
 
 
 def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmnts, n_discounts, n_arms, n_choices, threshold,
-                                             true_rew, true_dyn, initial_states, u_type, u_order, plan_wip, plan_rawip, w_range, w_trials):
+                                             true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, plan_rawip, w_range, w_trials):
 
     # Initialization
     print(f"Iteration {i} (TSDE) starts ...")
@@ -308,15 +386,20 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
     t_k = 0  # Start time of current episode k
     T_k_minus_1 = 0  # Initialize length of previous episode (T_{k-1})
     counts_at_episode_start = np.copy(counts) # Store counts at t=0 (start of episode 0)
-    est_transitions = np.zeros((n_states, n_states, 2, n_arms)) # To store the sampled transitions for the episode
 
     # Initial policy computation (Start of Episode 0)
     # print("t=0: Starting Episode k=0")
     # Sample initial transitions from the prior
-    for a in range(n_arms):
-        for s1 in range(n_states):
-            for act in range(2):
-                est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0] # Sample from posterior
+    if trans_type == 'structured':
+        alpha = np.ones(n_arms)
+        beta = np.ones(n_arms)
+        est_transitions, alpha, beta = estimate_structured_transition_probabilities(np.zeros((n_states, n_states, 2, n_arms)), alpha, beta)
+    else:
+        est_transitions = np.zeros((n_states, n_states, 2, n_arms))
+        for a in range(n_arms):
+            for s1 in range(n_states):
+                for act in range(2):
+                    est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
     # Create lern_wip object based on the *sampled* transitions for this episode
     lern_rawip = RiskAwareWhittleInf([n_states, n_augmnts, n_discounts], n_arms, true_rew, est_transitions, discount, u_type, u_order, threshold)
     lern_rawip.get_indices(w_range, w_trials)
@@ -361,10 +444,14 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
             # print(f"  t={t}: Starting Episode k={k} (Reason: {reason})") # <<< Updated Print Statement
 
             # Sample new transitions from the updated posterior (counts)
-            for a in range(n_arms):
-                for s1 in range(n_states):
-                    for act in range(2):
-                        est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
+            if trans_type == 'structured':
+                est_transitions, alpha, beta = estimate_structured_transition_probabilities(counts, alpha, beta)
+            else:
+                est_transitions = np.zeros((n_states, n_states, 2, n_arms))
+                for a in range(n_arms):
+                    for s1 in range(n_states):
+                        for act in range(2):
+                            est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
 
             # Update the lern_wip object with the *newly sampled* transitions for this episode
             if t < n_discounts:
@@ -379,6 +466,7 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
         # --- End TSDE Episode Check ---
 
         # Use the policy computed at the start of the *current* episode k
+        discount_val = discount ** t
         if t < n_discounts:
             actions = plan_rawip.take_action(n_choices, {"l": lifted, "x": states, "t": t})
             learn_actions = lern_rawip.take_action(n_choices, {"l": learn_lifted, "x": learn_states, "t": t})
@@ -386,7 +474,6 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
             actions = plan_wip.take_action(n_choices, {"x": states})
             learn_actions = lern_wip.take_action(n_choices, {"x": learn_states})
         _learn_states = np.copy(learn_states)
-        discount_val = discount ** t
         for a in range(n_arms):
             plan_totalrewards[a] += discount_val * true_rew[states[a], a]
             learn_totalrewards[a] += discount_val * true_rew[learn_states[a], a]
@@ -416,7 +503,7 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
 
 def multiprocess_inf_learn_LRAPTSDE(
         n_iterations, discount, n_steps, n_states, n_augmnts, n_discounts, n_arms, n_choices, threshold, 
-        true_rew, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
+        true_rew, trans_type, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
         ):
     num_workers = cpu_count() - 1
 
@@ -428,7 +515,7 @@ def multiprocess_inf_learn_LRAPTSDE(
 
     # Define arguments for each iteration
     args = [
-        (i, discount, n_steps, n_states, n_augmnts, n_discounts, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, 
+        (i, discount, n_steps, n_states, n_augmnts, n_discounts, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, 
          u_order, plan_wip, plan_rawip, w_range, w_trials) 
         for i in range(n_iterations)
     ]
@@ -452,7 +539,7 @@ def multiprocess_inf_learn_LRAPTSDE(
 
 
 def process_inf_learn_LRAPTS_iteration(i, discount, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, 
-                                       true_rew, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials): 
+                                       true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials): 
     # Initialization
     print(f"Iteration {i} starts ...")
     start_time = time.time()
@@ -466,11 +553,16 @@ def process_inf_learn_LRAPTS_iteration(i, discount, n_steps, n_states, n_augmnts
     }
 
     # Set up learning dynamics
-    est_transitions = np.zeros((n_states, n_states, 2, n_arms))
-    for a in range(n_arms):
-        for s1 in range(n_states):
-            for act in range(2):
-                est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))
+    if trans_type == 'structured':
+        alpha = np.ones(n_arms)
+        beta = np.ones(n_arms)
+        est_transitions, alpha, beta = estimate_structured_transition_probabilities(np.zeros((n_states, n_states, 2, n_arms)), alpha, beta)
+    else:
+        est_transitions = np.zeros((n_states, n_states, 2, n_arms))
+        for a in range(n_arms):
+            for s1 in range(n_states):
+                for act in range(2):
+                    est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
     lern_wip = RiskAwareWhittleInf([n_states, n_augmnts, n_steps], n_arms, true_rew, est_transitions, discount, n_steps, u_type, u_order, threshold)
     lern_wip.get_indices(w_range, w_trials)
     counts = np.ones((n_states, n_states, 2, n_arms))
@@ -498,11 +590,14 @@ def process_inf_learn_LRAPTS_iteration(i, discount, n_steps, n_states, n_augmnts
             counts[_learn_states[a], learn_states[a], learn_actions[a], a] += 1
         
         # Update transitions
-        est_transitions = np.zeros((n_states, n_states, 2, n_arms))
-        for a in range(n_arms):
-            for s1 in range(n_states):
-                for act in range(2):
-                    est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])
+        if trans_type == 'structured':
+            est_transitions, alpha, beta = estimate_structured_transition_probabilities(counts, alpha, beta)
+        else:
+            est_transitions = np.zeros((n_states, n_states, 2, n_arms))
+            for a in range(n_arms):
+                for s1 in range(n_states):
+                    for act in range(2):
+                        est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
         lern_wip = RiskAwareWhittleInf([n_states, n_augmnts, n_steps], n_arms, true_rew, est_transitions, discount, n_steps, u_type, u_order, threshold)
         lern_wip.get_indices(w_range, w_trials)
 
@@ -520,7 +615,7 @@ def process_inf_learn_LRAPTS_iteration(i, discount, n_steps, n_states, n_augmnts
 
 def multiprocess_inf_learn_LRAPTS(
         n_iterations, discount, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, 
-        true_rew, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
+        true_rew, trans_type, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
         ):
     num_workers = cpu_count() - 1
 
@@ -529,7 +624,7 @@ def multiprocess_inf_learn_LRAPTS(
 
     # Define arguments for each iteration
     args = [
-        (i, discount, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials) 
+        (i, discount, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials) 
         for i in range(n_iterations)
     ]
 
@@ -551,7 +646,7 @@ def multiprocess_inf_learn_LRAPTS(
     return all_learn_transitionerrors, all_learn_indexerrors, all_learn_rewards, all_learn_objectives, all_plan_rewards, all_plan_objectives
 
 
-def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, true_rew, true_dyn, initial_states, plan_wip, w_range, w_trials):
+def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, true_rew, trans_type, true_dyn, initial_states, plan_wip, w_range, w_trials):
     # Initialization
     print(f"Iteration {i} (TSDE) starts ...")
     start_time = time.time()
@@ -577,10 +672,16 @@ def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, tr
     # Initial policy computation (Start of Episode 0)
     # print("t=0: Starting Episode k=0")
     # Sample initial transitions from the prior
-    for a in range(n_arms):
-        for s1 in range(n_states):
-            for act in range(2):
-                est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0] # Sample from posterior
+    if trans_type == 'structured':
+        alpha = np.ones(n_arms)
+        beta = np.ones(n_arms)
+        est_transitions, alpha, beta = estimate_structured_transition_probabilities(counts, alpha, beta)
+    else:
+        est_transitions = np.zeros((n_states, n_states, 2, n_arms))
+        for a in range(n_arms):
+            for s1 in range(n_states):
+                for act in range(2):
+                    est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
     # Create lern_wip object based on the *sampled* transitions for this episode
     lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions)
     lern_wip.get_indices(w_range, w_trials) # Compute policy (Whittle indices) for the episode
@@ -623,10 +724,14 @@ def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, tr
             # print(f"  t={t}: Starting Episode k={k} (Reason: {reason})") # <<< Updated Print Statement
 
             # Sample new transitions from the updated posterior (counts)
-            for a in range(n_arms):
-                for s1 in range(n_states):
-                    for act in range(2):
-                        est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
+            if trans_type == 'structured':
+                est_transitions, alpha, beta = estimate_structured_transition_probabilities(counts, alpha, beta)
+            else:
+                est_transitions = np.zeros((n_states, n_states, 2, n_arms))
+                for a in range(n_arms):
+                    for s1 in range(n_states):
+                        for act in range(2):
+                            est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
 
             # Update the lern_wip object with the *newly sampled* transitions for this episode
             lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions)
@@ -654,7 +759,7 @@ def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, tr
 
 def multiprocess_avg_learn_TSDE(
         n_iterations, n_steps, n_states, n_arms, n_choices, 
-        true_rew, true_dyn, initial_states, save_data, filename, w_range, w_trials
+        true_rew, trans_type, true_dyn, initial_states, save_data, filename, w_range, w_trials
         ):
     num_workers = cpu_count() - 1
 
@@ -663,7 +768,7 @@ def multiprocess_avg_learn_TSDE(
 
     # Define arguments for each iteration
     args = [
-        (i, n_steps, n_states, n_arms, n_choices, true_rew, true_dyn, initial_states, plan_wip, w_range, w_trials) 
+        (i, n_steps, n_states, n_arms, n_choices, true_rew, trans_type, true_dyn, initial_states, plan_wip, w_range, w_trials) 
         for i in range(n_iterations)
     ]
 

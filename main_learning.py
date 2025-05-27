@@ -8,7 +8,7 @@ def main():
     param_sets_list = [
         {
             'n_steps': [5],
-            'n_states': [4, 5],
+            'n_states': [3],
             'n_arms': [3, 4, 5],
             'transition_type': ['structured'],
             'utility_functions': [(1, 0), (2, 4), (3, 16)],
@@ -26,9 +26,9 @@ def main():
         },
     ]
 
-    learning_episodes = 500
-    n_averaging_episodes = 10
-    n_iterations = 100
+    learning_episodes = 50
+    n_averaging_episodes = 5
+    n_iterations = 10
 
     save_data = True
     PATH = f'./learning-finite-{learning_episodes}-{n_averaging_episodes}-{n_iterations}/'
