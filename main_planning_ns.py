@@ -8,7 +8,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-PATH = './planning-nsfinite-May25-Tset/'
+PATH = './planning-nsfinite-June25/'
 # PATH = f'./planning-nsfinite-May25-dis9999/'
 if not os.path.exists(PATH):
     os.makedirs(PATH)

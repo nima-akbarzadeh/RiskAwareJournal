@@ -21,7 +21,7 @@ def process_neutral_whittle(Whittle, n_iterations, n_steps, n_states, n_arms, n_
     for k in range(n_iterations):
         states = initial_states.copy()
         for t in range(n_steps):
-            actions = Whittle.take_action(n_choices, states, t)
+            actions = Whittle.take_action(n_choices, {"x": states, "t": t})
             for a in range(n_arms):
                 totalrewards[a, k] += rewards[states[a], a]
                 states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
@@ -42,8 +42,8 @@ def process_neutral_whittle_learning(Whittle, Whittle_learn, n_iterations, n_ste
         states = initial_states.copy()
         learn_states = initial_states.copy()
         for t in range(n_steps):
-            actions = Whittle.take_action(n_choices, states, t)
-            learn_actions = Whittle_learn.take_action(n_choices, learn_states, t)
+            actions = Whittle.take_action(n_choices, {"x": states, "t": t})
+            learn_actions = Whittle_learn.take_action(n_choices, {"x": learn_states, "t": t})
             _learn_states = np.copy(learn_states)
             for a in range(n_arms):
                 totalrewards[a, k] += rewards[states[a], a]
@@ -67,7 +67,7 @@ def process_riskaware_whittle(raWhittle, n_iterations, n_steps, n_states, n_arms
         lifted = np.zeros(n_arms, dtype=np.int32)
         states = initial_states.copy()
         for t in range(n_steps):
-            actions = raWhittle.take_action(n_choices, lifted, states, t)
+            actions = raWhittle.take_action(n_choices, {"l": lifted, "x": states, "t": t})
             for a in range(n_arms):
                 totalrewards[a, k] += rewards[states[a], a]
                 lifted[a] = max(0, min(raWhittle.n_augment[a]-1, lifted[a] + states[a]))
@@ -91,8 +91,8 @@ def process_riskaware_whittle_learning(raWhittle, raWhittle_learn, n_iterations,
         learn_lifted = np.zeros(n_arms, dtype=np.int32)
         learn_states = initial_states.copy()
         for t in range(n_steps):
-            actions = raWhittle.take_action(n_choices, lifted, states, t)
-            learn_actions = raWhittle_learn.take_action(n_choices, learn_lifted, learn_states, t)
+            actions = raWhittle.take_action(n_choices, {"l": lifted, "x": states, "t": t})
+            learn_actions = raWhittle_learn.take_action(n_choices, {"l": learn_lifted, "x": learn_states, "t": t})
             _learn_states = np.copy(learn_states)
             for a in range(n_arms):
                 totalrewards[a, k] += rewards[states[a], a]
@@ -117,7 +117,7 @@ def process_ns_neutral_whittle(Whittle, n_iterations, n_steps, n_states, n_arms,
     for k in range(n_iterations):
         states = initial_states.copy()
         for t in range(n_steps):
-            actions = Whittle.take_action(n_choices, states, t)
+            actions = Whittle.take_action(n_choices, {"x": states, "t": t})
             for a in range(n_arms):
                 totalrewards[a, k] += rewards[states[a], t, a]
                 states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
@@ -136,7 +136,7 @@ def process_ns_riskaware_whittle(raWhittle, n_iterations, n_steps, n_states, n_a
         lifted = np.zeros(n_arms, dtype=np.int32)
         states = initial_states.copy()
         for t in range(n_steps):
-            actions = raWhittle.take_action(n_choices, lifted, states, t)
+            actions = raWhittle.take_action(n_choices, {"l": lifted, "x": states, "t": t})
             for a in range(n_arms):
                 totalrewards[a, k] += rewards[states[a], t, a]
                 lifted[a] = raWhittle.get_reward_partition(totalrewards[a, k])
@@ -161,8 +161,8 @@ def process_ns_riskaware_whittle_learning(raWhittle, raWhittle_learn, n_iteratio
         learn_lifted = np.zeros(n_arms, dtype=np.int32)
         learn_states = initial_states.copy()
         for t in range(n_steps):
-            actions = raWhittle.take_action(n_choices, lifted, states, t)
-            learn_actions = raWhittle_learn.take_action(n_choices, learn_lifted, learn_states, t)
+            actions = raWhittle.take_action(n_choices, {"l": lifted, "x": states, "t": t})
+            learn_actions = raWhittle_learn.take_action(n_choices, {"l": learn_lifted, "x": learn_states, "t": t})
             _learn_states = np.copy(learn_states)
             for a in range(n_arms):
                 totalrewards[a, k] += rewards[states[a], t, a]
@@ -188,7 +188,7 @@ def process_inf_neutral_whittle(Whittle, n_iterations, discount, n_steps, n_stat
         states = initial_states.copy()
         for t in range(n_steps):
             discount_val = discount ** t
-            actions = Whittle.take_action(n_choices, states)
+            actions = Whittle.take_action(n_choices, {"x": states})
             for a in range(n_arms):
                 totalrewards[a, k] += discount_val * rewards[states[a], a]
                 states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
@@ -209,9 +209,10 @@ def process_inf_riskaware_whittle(raWhittle, Whittle, n_discount, n_iterations, 
         for t in range(n_steps):
             discount_val = discount ** t
             if t < n_discount:
-                actions = raWhittle.take_action(n_choices, lifted, states, t)
+                
+                actions = raWhittle.take_action(n_choices, {"l": lifted, "x": states, "t": t})
             else:
-                actions = Whittle.take_action(n_choices, states)
+                actions = Whittle.take_action(n_choices, {"x": states})
             for a in range(n_arms):
                 totalrewards[a, k] += discount_val * rewards[states[a], a]
                 if t < n_discount:
@@ -237,8 +238,8 @@ def process_inf_riskaware_whittle_learning(raWhittle, raWhittle_learn, discount,
     counts = np.zeros((n_states, n_states, 2, n_arms))
     for t in range(n_steps):
         discount_val = discount ** t
-        actions = raWhittle.take_action(n_choices, lifted, states, t)
-        learn_actions = raWhittle_learn.take_action(n_choices, learn_lifted, learn_states, t)
+        actions = raWhittle.take_action(n_choices, {"l": lifted, "x": states, "t": t})
+        learn_actions = raWhittle_learn.take_action(n_choices, {"l": learn_lifted, "x": learn_states, "t": t})
         _learn_states = np.copy(learn_states)
         for a in range(n_arms):
             totalrewards[a] += discount_val * rewards[states[a], a]

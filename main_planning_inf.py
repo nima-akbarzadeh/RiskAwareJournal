@@ -7,7 +7,7 @@ from utils_u import run_multiple_inf_planning_combinations
 import warnings
 warnings.filterwarnings("ignore")
 
-PATH = './planning-infinite-May25-Dset/'
+PATH = './planning-infinite-June25/'
 if not os.path.exists(PATH):
     os.makedirs(PATH)
 

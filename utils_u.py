@@ -1,7 +1,7 @@
 import numpy
 import joblib
 from processes import *
-from whittle import *
+from whittle_v2 import *
 from Markov import *
 from learning import *
 from multiprocessing import Pool, cpu_count

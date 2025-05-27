@@ -1,6 +1,6 @@
 from scipy.stats import dirichlet
 import joblib
-from whittle import *
+from whittle_v2 import *
 from processes import *
 from multiprocessing import Pool, cpu_count
 import numpy as np
@@ -380,11 +380,11 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
 
         # Use the policy computed at the start of the *current* episode k
         if t < n_discounts:
-            actions = plan_rawip.take_action(n_choices, lifted, states, t)
-            learn_actions = lern_rawip.take_action(n_choices, learn_lifted, learn_states, t)
+            actions = plan_rawip.take_action(n_choices, {"l": lifted, "x": states, "t": t})
+            learn_actions = lern_rawip.take_action(n_choices, {"l": learn_lifted, "x": learn_states, "t": t})
         else:
-            actions = plan_wip.take_action(n_choices, states)
-            learn_actions = lern_wip.take_action(n_choices, learn_states)
+            actions = plan_wip.take_action(n_choices, {"x": states})
+            learn_actions = lern_wip.take_action(n_choices, {"x": learn_states})
         _learn_states = np.copy(learn_states)
         discount_val = discount ** t
         for a in range(n_arms):
