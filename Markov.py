@@ -105,8 +105,7 @@ def get_transitions(num_arms: int, num_states: int, prob_remain: np.ndarray,
             
             # Action 0 transitions (vectorized where possible)
             transitions[0, 0, 0, a] = 1
-            base_prob = 1 - (num_states - 1) * p
-            transitions[1:, 0, 0, a] = base_prob
+            transitions[1:, 0, 0, a] = 1 - (num_states - 1) * p
             
             # Fill lower triangular efficiently
             lower_tri = np.tril(np.ones((num_states - 1, num_states - 1)))

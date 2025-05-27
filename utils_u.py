@@ -297,7 +297,7 @@ def run_learning_combination(params):
         numpy.random.shuffle(pr_sp_1)
         pr_pp_1 = numpy.round(numpy.linspace(0.879, 0.921, na), 3)
         numpy.random.shuffle(pr_pp_1)
-        prob_remain = [pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1]
+        prob_remain = numpy.array([pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1])
         ns=3
 
     key_value = f'nt{nt}_ns{ns}_na{na}_tt{tt}_ut{ut}_th{th}_nc{nc}'
@@ -332,7 +332,7 @@ def run_ns_learning_combination(params):
         numpy.random.shuffle(pr_sp_1)
         pr_pp_1 = numpy.round(numpy.linspace(0.879, 0.921, na), 3)
         numpy.random.shuffle(pr_pp_1)
-        prob_remain = [pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1]
+        prob_remain = numpy.array([pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1])
         ns=3
 
     key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_na{na}_tt{tt}_ut{ut}_th{th}_nc{nc}'
@@ -367,7 +367,7 @@ def run_inf_learning_combination(params):
         numpy.random.shuffle(pr_sp_1)
         pr_pp_1 = numpy.round(numpy.linspace(0.879, 0.921, na), 3)
         numpy.random.shuffle(pr_pp_1)
-        prob_remain = [pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1]
+        prob_remain = numpy.array([pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1])
         ns=3
 
     key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nd{nd}_na{na}_tt{tt}_ut{ut}_th{th}_nc{nc}'

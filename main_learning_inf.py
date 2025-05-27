@@ -10,18 +10,18 @@ def main():
     n_iterations = 20
 
     param_sets_list = [
-        {
-            'discount_factors': discounts,
-            'n_steps': n_steps,
-            'n_states': [3, 4],
-            'n_augmnt': [50],
-            'n_discnt': [100],
-            'n_arms': [3, 4, 5],
-            'transition_type': ['structured'],
-            'utility_functions': [(2, 8), (3, 8)],
-            'thresholds': [0.5],
-            'arm_choices': [1]
-        },
+        # {
+        #     'discount_factors': discounts,
+        #     'n_steps': n_steps,
+        #     'n_states': [3, 4],
+        #     'n_augmnt': [50],
+        #     'n_discnt': [100],
+        #     'n_arms': [3, 4, 5],
+        #     'transition_type': ['structured'],
+        #     'utility_functions': [(2, 8), (3, 8)],
+        #     'thresholds': [0.5],
+        #     'arm_choices': [1]
+        # },
         {
             'discount_factors': discounts,
             'n_steps': n_steps,

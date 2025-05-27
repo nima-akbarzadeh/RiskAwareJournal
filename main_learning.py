@@ -6,29 +6,29 @@ warnings.filterwarnings("ignore")
 
 def main():
     param_sets_list = [
-        {
-            'n_steps': [5],
-            'n_states': [3, 4, 5],
-            'n_arms': [3, 4, 5],
-            'transition_type': ['structured'],
-            'utility_functions': [(1, 0), (2, 4), (3, 16)],
-            'thresholds': [0.3, 0.5, 0.7],
-            'arm_choices': [1]
-        },
+        # {
+        #     'n_steps': [5],
+        #     'n_states': [3, 4, 5],
+        #     'n_arms': [3, 4, 5],
+        #     'transition_type': ['structured'],
+        #     'utility_functions': [(1, 0), (2, 4), (3, 16)],
+        #     'thresholds': [0.3, 0.5, 0.7],
+        #     'arm_choices': [1]
+        # },
         {
             'n_steps': [5],
             'n_states': [3],
             'n_arms': [3, 4, 5],
-            'transition_type': ['clinical', 'structured'],
+            'transition_type': ['clinical'],
             'utility_functions': [(1, 0), (2, 4), (3, 16)],
             'thresholds': [0.3, 0.5, 0.7],
             'arm_choices': [1]
         },
     ]
 
-    learning_episodes = 500
+    learning_episodes = 50
     n_averaging_episodes = 5
-    n_iterations = 20
+    n_iterations = 1
 
     save_data = True
     PATH = f'./learning-finite-{learning_episodes}-{n_averaging_episodes}-{n_iterations}/'
