@@ -147,6 +147,119 @@ def get_transitions(num_arms: int, num_states: int, prob_remain: np.ndarray,
                 [1 - (pr_sp_1 + pr_ss_1), pr_sp_1, pr_ss_1]
             ])
     
+    elif transition_type == 'clinical-v2':
+        for a in range(num_arms):
+            # Extract probabilities
+            pr_ss_0 = prob_remain[0][a]
+            pr_sr_0 = prob_remain[1][a]
+            pr_sp_0 = prob_remain[2][a]
+            pr_rr_0 = prob_remain[3][a]
+            pr_rp_0 = prob_remain[4][a]
+            pr_pp_0 = prob_remain[5][a]
+
+            pr_ss_1 = prob_remain[6][a]
+            pr_sr_1 = prob_remain[7][a]
+            pr_sp_1 = prob_remain[8][a]
+            pr_rr_1 = prob_remain[9][a] 
+            pr_rp_1 = prob_remain[10][a]
+            pr_pp_1 = prob_remain[11][a]
+
+            # Normalize if needed for action 0, state S
+            if pr_ss_0 + pr_sr_0 + pr_sp_0 > 1:
+                sumprobs = pr_ss_0 + pr_sr_0 + pr_sp_0
+                pr_ss_0 = np.round(pr_ss_0 / sumprobs, 3)
+                pr_sr_0 = np.round(pr_sr_0 / sumprobs, 3)
+                pr_sp_0 = np.round(pr_sp_0 / sumprobs, 3)
+            
+            # Normalize if needed for action 0, state R
+            if pr_rr_0 + pr_rp_0 > 1:
+                sumprobs = pr_rr_0 + pr_rp_0
+                pr_rr_0 = np.round(pr_rr_0 / sumprobs, 3)
+                pr_rp_0 = np.round(pr_rp_0 / sumprobs, 3)
+
+            # Normalize if needed for action 1, state S
+            if pr_ss_1 + pr_sr_1 + pr_sp_1 > 1:
+                sumprobs = pr_ss_1 + pr_sr_1 + pr_sp_1
+                pr_ss_1 = np.round(pr_ss_1 / sumprobs, 3)
+                pr_sr_1 = np.round(pr_sr_1 / sumprobs, 3)
+                pr_sp_1 = np.round(pr_sp_1 / sumprobs, 3)
+
+            # Normalize if needed for action 1, state R
+            if pr_rr_1 + pr_rp_1 > 1:
+                sumprobs = pr_rr_1 + pr_rp_1
+                pr_rr_1 = np.round(pr_rr_1 / sumprobs, 3)
+                pr_rp_1 = np.round(pr_rp_1 / sumprobs, 3)
+
+            transitions[:, :, 0, a] = np.array([
+                [1, 0, 0, 0],  # State D (Death)
+                [1 - pr_pp_0, pr_pp_0, 0, 0], # From state P
+                [1 - (pr_rp_0 + pr_rr_0), pr_rp_0, pr_rr_0, 0], # From state R
+                [1 - (pr_sp_0 + pr_sr_0 + pr_ss_0), pr_sp_0, pr_sr_0, pr_ss_0] # From state S
+            ])
+            transitions[:, :, 1, a] = np.array([
+                [1, 0, 0, 0], # State D (Death)
+                [1 - pr_pp_1, pr_pp_1, 0, 0], # From state P
+                [1 - (pr_rp_1 + pr_rr_1), pr_rp_1, pr_rr_1, 0], # From state R
+                [1 - (pr_sp_1 + pr_sr_1 + pr_ss_1), pr_sp_1, pr_sr_1, pr_ss_1] # From state S
+            ])
+
+    elif transition_type == 'clinical-v3':
+        for a in range(num_arms):
+            # Extract probabilities
+            pr_ss_0 = prob_remain[0][a]
+            pr_sr_0 = prob_remain[1][a]
+            pr_rr_0 = prob_remain[2][a]
+            pr_pp_0 = prob_remain[3][a]
+
+            pr_ss_1 = prob_remain[4][a]
+            pr_sr_1 = prob_remain[5][a]
+            pr_rr_1 = prob_remain[6][a]
+            pr_pp_1 = prob_remain[7][a]
+
+            # Normalize if needed for action 0, state S
+            if pr_ss_0 + pr_sr_0 > 1:
+                sumprobs = pr_ss_0 + pr_sr_0
+                pr_ss_0 = np.round(pr_ss_0 / sumprobs, 3)
+                pr_sr_0 = np.round(pr_sr_0 / sumprobs, 3)
+            
+            # Normalize if needed for action 1, state S
+            if pr_ss_1 + pr_sr_1 > 1:
+                sumprobs = pr_ss_1 + pr_sr_1
+                pr_ss_1 = np.round(pr_ss_1 / sumprobs, 3)
+                pr_sr_1 = np.round(pr_sr_1 / sumprobs, 3)
+
+            transitions[:, :, 0, a] = np.array([
+                [1, 0, 0, 0], # State D (Death)
+                [1 - pr_pp_0, pr_pp_0, 0, 0], # From state P
+                [0, 1 - pr_rr_0, pr_rr_0, 0], # From state R (assuming 0 probability to D or S)
+                [0, 1 - (pr_sr_0 + pr_ss_0), pr_sr_0, pr_ss_0] # From state S (assuming 0 probability to D)
+            ])
+            transitions[:, :, 1, a] = np.array([
+                [1, 0, 0, 0], # State D (Death)
+                [1 - pr_pp_1, pr_pp_1, 0, 0], # From state P
+                [0, 1 - pr_rr_1, pr_rr_1, 0], # From state R (assuming 0 probability to D or S)
+                [0, 1 - (pr_sr_1 + pr_ss_1), pr_sr_1, pr_ss_1] # From state S (assuming 0 probability to D)
+            ])
+
+    elif transition_type == 'clinical-v4':
+        for a in range(num_arms):
+            # Extract probabilities (no normalization needed as only two outcomes are present)
+            pr_ss_0 = prob_remain[0][a]
+            pr_pp_0 = prob_remain[1][a]
+            pr_ss_1 = prob_remain[2][a]
+            pr_pp_1 = prob_remain[3][a]
+
+            transitions[:, :, 0, a] = np.array([
+                [1, 0, 0], # State D (Death)
+                [1 - pr_pp_0, pr_pp_0, 0], # From state P
+                [0, 1 - pr_ss_0, pr_ss_0] # From state S (assuming 0 probability to D)
+            ])
+            transitions[:, :, 1, a] = np.array([
+                [1, 0, 0], # State D (Death)
+                [1 - pr_pp_1, pr_pp_1, 0], # From state P
+                [0, 1 - pr_ss_1, pr_ss_1] # From state S (assuming 0 probability to D)
+            ])
+
     # Validate and normalize transition probabilities
     for a in range(num_arms):
         for s in range(num_states):

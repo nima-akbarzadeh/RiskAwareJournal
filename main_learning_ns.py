@@ -9,33 +9,44 @@ def main():
         {
             'discount_factors': [0.9, 0.99],
             'n_steps': [5],
-            'n_states': [3, 4],
+            'n_states': [4],
             'n_augmnt': [50],
-            'n_arms': [3, 4, 5],
+            'n_arms': [3, 4],
             'transition_type': ['structured'],
-            'utility_functions': [(2, 8), (3, 8)],
+            'utility_functions': [ (3, 8)],
             'thresholds': [0.5],
             'arm_choices': [1]
         },
-        {
-            'discount_factors': [0.9, 0.99],
-            'n_steps': [5],
-            'n_states': [3],
-            'n_augmnt': [50],
-            'n_arms': [3, 4, 5],
-            'transition_type': ['clinical'],
-            'utility_functions': [(2, 8), (3, 8)],
-            'thresholds': [0.5],
-            'arm_choices': [1]
-        },
+        # {
+        #     'discount_factors': [0.9, 0.99],
+        #     'n_steps': [5],
+        #     'n_states': [3, 4],
+        #     'n_augmnt': [50],
+        #     'n_arms': [3, 4, 5],
+        #     'transition_type': ['structured'],
+        #     'utility_functions': [(2, 8), (3, 8)],
+        #     'thresholds': [0.5],
+        #     'arm_choices': [1]
+        # },
+        # {
+        #     'discount_factors': [0.9, 0.99],
+        #     'n_steps': [5],
+        #     'n_states': [3],
+        #     'n_augmnt': [50],
+        #     'n_arms': [3, 4, 5],
+        #     'transition_type': ['clinical'],
+        #     'utility_functions': [(2, 8), (3, 8)],
+        #     'thresholds': [0.5],
+        #     'arm_choices': [1]
+        # },
     ]
 
     learning_episodes = 500
-    n_averaging_episodes = 5
+    n_batches = 5
     n_iterations = 20
 
     save_data = True
-    PATH = f'./learning-nsfinite-{learning_episodes}-{n_averaging_episodes}-{n_iterations}/'
+    PATH = f'./learning-nsfinite-{learning_episodes}-{n_batches}-{n_iterations}/'
     if not os.path.exists(PATH):
         os.makedirs(PATH)
 
@@ -53,7 +64,7 @@ def main():
             param_sets['thresholds'],
             param_sets['arm_choices'],
             [learning_episodes],  #  Add the fixed parameters to the product
-            [n_averaging_episodes],
+            [n_batches],
             [n_iterations],
             [save_data],
             [PATH]

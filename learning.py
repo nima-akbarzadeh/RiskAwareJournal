@@ -71,7 +71,7 @@ def estimate_structured_transition_probabilities(
     return get_transitions(num_arms, num_states, prob_remain, 'structured')
 
 
-def process_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order, 
+def process_learn_LRAPTS_iteration(i, l_episodes, n_batches, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order, 
                                    plan_wip, w_range, w_trials):
 
     # Initialization
@@ -93,15 +93,15 @@ def process_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states,
     else:
         est_transitions = np.zeros((n_states, n_states, 2, n_arms))
         for a in range(n_arms):
-            for s1 in range(n_states):
+            for x in range(n_states):
                 for act in range(2):
-                    est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
+                    est_transitions[x, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
     lern_wip = RiskAwareWhittle(n_states, n_arms, true_rew, est_transitions, n_steps, u_type, u_order, threshold)
     lern_wip.get_indices(w_range, w_trials)
 
     for l in range(l_episodes):
         plan_totalrewards, plan_objectives, learn_totalrewards, learn_objectives, cnts = \
-            process_riskaware_whittle_learning(plan_wip, lern_wip, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order)
+            process_riskaware_whittle_learning(plan_wip, lern_wip, n_batches, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order)
         counts += cnts
 
         # Update transitions
@@ -115,8 +115,8 @@ def process_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states,
                     print(f"Arm = {a}")
                     print(f"action : {act}")
                     print(counts[:, :, act, a])
-                    for s1 in range(n_states):
-                        est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
+                    for x in range(n_states):
+                        est_transitions[x, :, act, a] = dirichlet.rvs(counts[x, :, act, a])[0]
         lern_wip = RiskAwareWhittle(n_states, n_arms, true_rew, est_transitions, n_steps, u_type, u_order, threshold)
         lern_wip.get_indices(w_range, w_trials)
 
@@ -133,7 +133,7 @@ def process_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states,
 
 
 def multiprocess_learn_LRAPTS(
-        n_iterations, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, 
+        n_iterations, l_episodes, n_batches, n_steps, n_states, n_arms, n_choices, threshold, true_rew, 
         trans_type, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
         ):
     num_workers = cpu_count() - 1
@@ -143,7 +143,7 @@ def multiprocess_learn_LRAPTS(
 
     # Define arguments for each iteration
     args = [
-        (i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials) 
+        (i, l_episodes, n_batches, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials) 
         for i in range(n_iterations)
     ]
 
@@ -165,7 +165,7 @@ def multiprocess_learn_LRAPTS(
     return all_learn_transitionerrors, all_learn_indexerrors, all_learn_rewards, all_learn_objectives, all_plan_rewards, all_plan_objectives
 
 
-def process_learn_LRNPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, 
+def process_learn_LRNPTS_iteration(i, l_episodes, n_batches, n_steps, n_states, n_arms, n_choices, threshold, 
                                    true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials):
 
     # Initialization
@@ -187,15 +187,15 @@ def process_learn_LRNPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states,
     else:
         est_transitions = np.zeros((n_states, n_states, 2, n_arms))
         for a in range(n_arms):
-            for s1 in range(n_states):
+            for x in range(n_states):
                 for act in range(2):
-                    est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
+                    est_transitions[x, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
     lern_wip = Whittle(n_states, n_arms, true_rew, est_transitions, n_steps)
     lern_wip.get_indices(w_range, w_trials)
 
     for l in range(l_episodes):
         plan_totalrewards, plan_objectives, learn_totalrewards, learn_objectives, cnts = \
-            process_neutral_whittle_learning(plan_wip, lern_wip, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order)
+            process_neutral_whittle_learning(plan_wip, lern_wip, n_batches, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order)
         counts += cnts
 
         # Update transitions
@@ -204,9 +204,9 @@ def process_learn_LRNPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states,
         else:
             est_transitions = np.zeros((n_states, n_states, 2, n_arms))
             for a in range(n_arms):
-                for s1 in range(n_states):
+                for x in range(n_states):
                     for act in range(2):
-                        est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
+                        est_transitions[x, :, act, a] = dirichlet.rvs(counts[x, :, act, a])[0]
         lern_wip = Whittle(n_states, n_arms, true_rew, est_transitions, n_steps)
         lern_wip.get_indices(w_range, w_trials)
 
@@ -223,7 +223,7 @@ def process_learn_LRNPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states,
 
 
 def multiprocess_learn_LRNPTS(
-        n_iterations, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, 
+        n_iterations, l_episodes, n_batches, n_steps, n_states, n_arms, n_choices, threshold, true_rew, 
         trans_type, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
         ):
     num_workers = cpu_count() - 1
@@ -233,7 +233,7 @@ def multiprocess_learn_LRNPTS(
 
     # Define arguments for each iteration
     args = [
-        (i, l_episodes, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials) 
+        (i, l_episodes, n_batches, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials) 
         for i in range(n_iterations)
     ]
 
@@ -255,7 +255,7 @@ def multiprocess_learn_LRNPTS(
     return all_learn_transitionerrors, all_learn_indexerrors, all_learn_rewards, all_learn_objectives, all_plan_rewards, all_plan_objectives
 
 
-def process_ns_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, 
+def process_ns_learn_LRAPTS_iteration(i, l_episodes, n_batches, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, 
                                       true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, w_range, w_trials):
 
     # Initialization
@@ -277,16 +277,16 @@ def process_ns_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_stat
     else:
         est_transitions = np.zeros((n_states, n_states, 2, n_arms))
         for a in range(n_arms):
-            for s1 in range(n_states):
+            for x in range(n_states):
                 for act in range(2):
-                    est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
+                    est_transitions[x, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
     lern_wip = RiskAwareWhittleNS([n_states, n_augmnts], n_arms, true_rew, est_transitions, n_steps, u_type, u_order, threshold)
     lern_wip.get_indices(w_range, w_trials)
     counts = np.ones((n_states, n_states, 2, n_arms))
 
     for l in range(l_episodes):
         plan_totalrewards, plan_objectives, learn_totalrewards, learn_objectives, cnts = \
-            process_ns_riskaware_whittle_learning(plan_wip, lern_wip, n_episodes, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order)
+            process_ns_riskaware_whittle_learning(plan_wip, lern_wip, n_batches, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order)
         counts += cnts
 
         # Update transitions
@@ -300,8 +300,8 @@ def process_ns_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_stat
                     # print(f"Arm = {a}")
                     # print(f"action : {act}")
                     # print(counts[:, :, act, a])
-                    for s1 in range(n_states):
-                        est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
+                    for x in range(n_states):
+                        est_transitions[x, :, act, a] = dirichlet.rvs(counts[x, :, act, a])[0]
         lern_wip = RiskAwareWhittleNS([n_states, n_augmnts], n_arms, true_rew, est_transitions, n_steps, u_type, u_order, threshold)
         lern_wip.get_indices(w_range, w_trials)
 
@@ -312,13 +312,14 @@ def process_ns_learn_LRAPTS_iteration(i, l_episodes, n_episodes, n_steps, n_stat
             results["plan_objectives"][l, a] = np.mean(plan_objectives[a, :])
             results["learn_rewards"][l, a] = np.mean(learn_totalrewards[a, :])
             results["learn_objectives"][l, a] = np.mean(learn_objectives[a, :])
+            print(f"Ite {i} - Arm {a} - AVG {np.mean(plan_totalrewards[a, :])} - STD {np.std(plan_totalrewards[a, :])}")
 
     print(f"Iteration {i} end with duration: {time.time() - start_time}")
     return results
 
 
 def multiprocess_ns_learn_LRAPTS(
-        n_iterations, l_episodes, n_episodes, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, 
+        n_iterations, l_episodes, n_batches, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, 
         true_rew, trans_type, true_dyn, initial_states, u_type, u_order, save_data, filename, w_range, w_trials
         ):
     num_workers = cpu_count() - 1
@@ -328,7 +329,7 @@ def multiprocess_ns_learn_LRAPTS(
 
     # Define arguments for each iteration
     args = [
-        (i, l_episodes, n_episodes, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, 
+        (i, l_episodes, n_batches, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, 
          u_type, u_order, plan_wip, w_range, w_trials) 
         for i in range(n_iterations)
     ]
@@ -344,6 +345,18 @@ def multiprocess_ns_learn_LRAPTS(
     all_learn_objectives = np.stack([res["learn_objectives"] for res in results])
     all_plan_rewards = np.stack([res["plan_rewards"] for res in results])
     all_plan_objectives = np.stack([res["plan_objectives"] for res in results])
+    print("ALL LEARNING") 
+    [print(all_learn_objective) for all_learn_objective in np.cumsum(np.sum(all_learn_objectives, axis=2), axis=1)]
+    print(f"AVG - {np.mean(np.cumsum(np.sum(all_learn_objectives, axis=2), axis=1), axis=0)}")
+    print(f"STD - {np.std(np.cumsum(np.sum(all_learn_objectives, axis=2), axis=1), axis=0)}") 
+    print("ALL PLANNING") 
+    [print(all_plan_objective) for all_plan_objective in np.cumsum(np.sum(all_plan_objectives, axis=2), axis=1)]
+    print(f"AVG - {np.mean(np.cumsum(np.sum(all_plan_objectives, axis=2), axis=1), axis=0)}")
+    print(f"STD - {np.std(np.cumsum(np.sum(all_plan_objectives, axis=2), axis=1), axis=0)}") 
+    print("ALL REGRET") 
+    [print(all_reg_objective) for all_reg_objective in np.cumsum(np.sum(all_plan_objectives - all_learn_objectives, axis=2), axis=1)]
+    print(f"AVG - {np.mean(np.cumsum(np.sum(all_plan_objectives - all_learn_objectives, axis=2), axis=1), axis=0)}")
+    print(f"STD - {np.std(np.cumsum(np.sum(all_plan_objectives - all_learn_objectives, axis=2), axis=1), axis=0)}") 
 
     if save_data:
         joblib.dump([all_learn_transitionerrors, all_learn_indexerrors, all_learn_rewards, all_learn_objectives, all_plan_rewards, all_plan_objectives], filename)
@@ -376,7 +389,7 @@ def check_episode_condition(counts, counts_at_episode_start):
 
 
 def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmnts, n_discounts, n_arms, n_choices, threshold,
-                                             true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, plan_rawip, w_range, w_trials):
+                                         true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, plan_rawip, w_range, w_trials):
 
     # Initialization
     print(f"Iteration {i} (TSDE) starts ...")
@@ -400,27 +413,29 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
     counts_at_episode_start = np.copy(counts) # Store counts at t=0 (start of episode 0)
 
     # Initial policy computation (Start of Episode 0)
-    # print("t=0: Starting Episode k=0")
     # Sample initial transitions from the prior
     if trans_type == 'notfornow':
         est_transitions = estimate_structured_transition_probabilities(counts)
     else:
         est_transitions = np.zeros((n_states, n_states, 2, n_arms))
         for a in range(n_arms):
-            for s1 in range(n_states):
+            for x in range(n_states):
                 for act in range(2):
-                    est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
+                    est_transitions[x, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
     # Create lern_wip object based on the *sampled* transitions for this episode
     lern_rawip = RiskAwareWhittleInf([n_states, n_augmnts, n_discounts], n_arms, true_rew, est_transitions, discount, u_type, u_order, threshold)
     lern_rawip.get_indices(w_range, w_trials)
     # ------------------------------------
 
-    plan_totalrewards = np.zeros(n_arms)
-    learn_totalrewards = np.zeros(n_arms)
-    lifted = np.zeros(n_arms, dtype=np.int32)
-    states = initial_states.copy()
-    learn_lifted = np.zeros(n_arms, dtype=np.int32)
-    learn_states = initial_states.copy()
+    sample_paths = 10
+    plan_totalrewards = np.zeros((n_arms, sample_paths))
+    learn_totalrewards = np.zeros((n_arms, sample_paths))
+    plan_utility = np.zeros((n_arms, sample_paths))
+    learn_utility = np.zeros((n_arms, sample_paths))
+    lifted = np.zeros((n_arms, sample_paths), dtype=np.int32)
+    states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
+    learn_lifted = np.zeros((n_arms, sample_paths), dtype=np.int32)
+    learn_states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
 
     for t in range(n_steps):
 
@@ -464,8 +479,8 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
                         print(f"Arm = {a}")
                         print(f"action : {act}")
                         print(counts[:, :, act, a])
-                        for s1 in range(n_states):
-                            est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
+                        for x in range(n_states):
+                            est_transitions[x, :, act, a] = dirichlet.rvs(counts[x, :, act, a])[0]
 
             # Update the lern_wip object with the *newly sampled* transitions for this episode
             if t < n_discounts:
@@ -473,43 +488,59 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
                 lern_rawip.get_indices(w_range, w_trials)
                 lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps, discount)
                 lern_wip.get_indices(w_range, w_trials)
+                # for a in range(n_arms):
+                #     for x in range(n_states):
+                #         lern_rawip.whittle_indices[a][:, x, :] = lern_rawip.whittle_indices[a][:, x, :] + np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 1, a]) )
+                #         lern_rawip.whittle_indices[a][:, x, :] = np.maximum(0, lern_rawip.whittle_indices[a][:, x, :] - np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 0, a]) ))
+                #         lern_wip.whittle_indices[a][x] = lern_wip.whittle_indices[a][x] + np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 1, a]) )
+                #         lern_wip.whittle_indices[a][x] = np.maximum(0, lern_wip.whittle_indices[a][x] - np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 0, a]) ))
+
             else:
                 lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps, discount)
                 lern_wip.get_indices(w_range, w_trials)
+
+                # for a in range(n_arms):
+                #     for x in range(n_states):
+                #         lern_wip.whittle_indices[a][x] = lern_wip.whittle_indices[a][x] + np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 1, a]) )
+                #         lern_wip.whittle_indices[a][x] = np.maximum(0, lern_wip.whittle_indices[a][x] - np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 0, a]) ))
 
         # --- End TSDE Episode Check ---
 
         # Use the policy computed at the start of the *current* episode k
         discount_val = discount ** t
-        if t < n_discounts:
-            actions = plan_rawip.take_action(n_choices, {"l": lifted, "x": states, "t": t})
-            learn_actions = lern_rawip.take_action(n_choices, {"l": learn_lifted, "x": learn_states, "t": t})
-        else:
-            actions = plan_wip.take_action(n_choices, {"x": states})
-            learn_actions = lern_wip.take_action(n_choices, {"x": learn_states})
-        _learn_states = np.copy(learn_states)
-        for a in range(n_arms):
-            plan_totalrewards[a] += discount_val * true_rew[states[a], a]
-            learn_totalrewards[a] += discount_val * true_rew[learn_states[a], a]
+        for s in range(sample_paths):
             if t < n_discounts:
-                lifted[a] = plan_rawip.get_reward_partition(plan_totalrewards[a])
-                learn_lifted[a] = lern_rawip.get_reward_partition(learn_totalrewards[a])
-            states[a] = np.random.choice(n_states, p=true_dyn[states[a], :, actions[a], a])
-            learn_states[a] = np.random.choice(n_states, p=true_dyn[learn_states[a], :, learn_actions[a], a])
-            counts[_learn_states[a], learn_states[a], learn_actions[a], a] += 1
+                actions = plan_rawip.take_action(n_choices, {"l": lifted[:, s], "x": states[:, s], "t": t})
+                learn_actions = lern_rawip.take_action(n_choices, {"l": learn_lifted[:, s], "x": learn_states[:, s], "t": t})
+            else:
+                actions = plan_wip.take_action(n_choices, {"x": states[:, s]})
+                learn_actions = lern_wip.take_action(n_choices, {"x": learn_states[:, s]})
+            _learn_states = np.copy(learn_states[:, s])
+            for a in range(n_arms):
+                plan_totalrewards[a, s] += discount_val * true_rew[states[a, s], a]
+                plan_utility[a, s] = compute_utility(plan_totalrewards[a, s], threshold, u_type, u_order)
+                learn_totalrewards[a, s] += discount_val * true_rew[learn_states[a, s], a]
+                learn_utility[a, s] = compute_utility(learn_totalrewards[a, s], threshold, u_type, u_order)
+                if t < n_discounts:
+                    lifted[a, s] = plan_rawip.get_reward_partition(plan_totalrewards[a, s])
+                    learn_lifted[a, s] = lern_rawip.get_reward_partition(learn_totalrewards[a, s])
+                states[a, s] = np.random.choice(n_states, p=true_dyn[states[a, s], :, actions[a], a])
+                learn_states[a, s] = np.random.choice(n_states, p=true_dyn[learn_states[a, s], :, learn_actions[a], a])
+                counts[_learn_states[a], learn_states[a, s], learn_actions[a], a] += 1
+        for a in range(n_arms):
             results["learn_transitionerrors"][t, a] = np.max(np.abs(est_transitions[:, :, :, a] - true_dyn[:, :, :, a]))
-            results["plan_rewards"][t, a] = plan_totalrewards[a]
-            results["plan_objectives"][t, a] = compute_utility(plan_totalrewards[a], threshold, u_type, u_order)
-            results["learn_rewards"][t, a] = learn_totalrewards[a]
-            results["learn_objectives"][t, a] = compute_utility(learn_totalrewards[a], threshold, u_type, u_order)
+            results["plan_rewards"][t, a] = np.mean(plan_totalrewards[a, :])
+            results["learn_rewards"][t, a] = np.mean(learn_totalrewards[a, :])
+            results["plan_objectives"][t, a] = np.mean(plan_utility[a, :])
+            results["learn_objectives"][t, a] = np.mean(learn_utility[a, :])
             if t < n_discounts:
                 results["learn_indexerrors"][t, a] = np.max(np.abs(lern_rawip.whittle_indices[a] - plan_rawip.whittle_indices[a]))
             else:
                 results["learn_indexerrors"][t, a] = np.max(np.abs(lern_wip.whittle_indices[a] - plan_wip.whittle_indices[a]))
-            # print(f"t={t}, a={a}, states={states[a]}, learn_states={learn_states[a]}")
-            # print(f"t={t}, a={a}, plan_rew={true_rew[states[a], a]}, learn_rew={true_rew[learn_states[a], a]}, discount_val={discount_val}")
-            # print(f"t={t}, a={a}, plan_rewards={results['plan_rewards'][t, a]}, learn_rewards={results['learn_rewards'][t, a]}")
-            # print(f"t={t}, a={a}, plan_objective={results["plan_objectives"][t, a]}, learn_objective={results["learn_objectives"][t, a]}")
+        # print(f"t={t}, a={a}, states={states[a]}, learn_states={learn_states[a]}")
+        # print(f"t={t}, a={a}, plan_rew={true_rew[states[a], a]}, learn_rew={true_rew[learn_states[a], a]}, discount_val={discount_val}")
+        # print(f"t={t}, a={a}, plan_rewards={results['plan_rewards'][t, a]}, learn_rewards={results['learn_rewards'][t, a]}")
+        # print(f"t={t}, a={a}, plan_objective={results["plan_objectives"][t, a]}, learn_objective={results["learn_objectives"][t, a]}")
 
     print(f"Iteration {i} (TSDE) end with duration: {time.time() - start_time}")
     return results
@@ -573,9 +604,9 @@ def process_inf_learn_LRAPTS_iteration(i, discount, n_steps, n_states, n_augmnts
     else:
         est_transitions = np.zeros((n_states, n_states, 2, n_arms))
         for a in range(n_arms):
-            for s1 in range(n_states):
+            for x in range(n_states):
                 for act in range(2):
-                    est_transitions[s1, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
+                    est_transitions[x, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
     lern_wip = RiskAwareWhittleInf([n_states, n_augmnts, n_steps], n_arms, true_rew, est_transitions, discount, n_steps, u_type, u_order, threshold)
     lern_wip.get_indices(w_range, w_trials)
 
@@ -607,9 +638,9 @@ def process_inf_learn_LRAPTS_iteration(i, discount, n_steps, n_states, n_augmnts
         else:
             est_transitions = np.zeros((n_states, n_states, 2, n_arms))
             for a in range(n_arms):
-                for s1 in range(n_states):
+                for x in range(n_states):
                     for act in range(2):
-                        est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
+                        est_transitions[x, :, act, a] = dirichlet.rvs(counts[x, :, act, a])[0]
         lern_wip = RiskAwareWhittleInf([n_states, n_augmnts, n_steps], n_arms, true_rew, est_transitions, discount, n_steps, u_type, u_order, threshold)
         lern_wip.get_indices(w_range, w_trials)
 
@@ -690,17 +721,21 @@ def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, tr
         est_transitions = np.zeros((n_states, n_states, 2, n_arms))
         for a in range(n_arms):
             for act in range(2):
-                for s1 in range(n_states):
-                    est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
+                for x in range(n_states):
+                    est_transitions[x, :, act, a] = dirichlet.rvs(counts[x, :, act, a])[0]
+
+    discount = 0.999
+
     # Create lern_wip object based on the *sampled* transitions for this episode
-    lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps, discount=0.99)
+    lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps, discount)
     lern_wip.get_indices(w_range, w_trials) # Compute policy (Whittle indices) for the episode
     # ------------------------------------
 
-    plan_totalrewards = np.zeros(n_arms)
-    learn_totalrewards = np.zeros(n_arms)
-    states = initial_states.copy()
-    learn_states = initial_states.copy()
+    sample_paths = 10
+    plan_rewards = np.zeros((n_arms, sample_paths))
+    learn_rewards = np.zeros((n_arms, sample_paths))
+    states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
+    learn_states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
 
     for t in range(n_steps):
 
@@ -744,32 +779,37 @@ def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, tr
                         print(f"Arm = {a}")
                         print(f"action : {act}")
                         print(counts[:, :, act, a])
-                        for s1 in range(n_states):
-                            est_transitions[s1, :, act, a] = dirichlet.rvs(counts[s1, :, act, a])[0]
+                        for x in range(n_states):
+                            est_transitions[x, :, act, a] = dirichlet.rvs(counts[x, :, act, a])[0]
 
             # Update the lern_wip object with the *newly sampled* transitions for this episode
-            lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps, discount=0.99)
-            lern_wip.get_indices(w_range, w_trials) # Compute policy (Whittle indices) for the new episode
+            lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps, discount)
+            lern_wip.get_indices(w_range, w_trials)
+
+            for a in range(n_arms):
+                for x in range(n_states):
+                    lern_wip.whittle_indices[a][x] = lern_wip.whittle_indices[a][x] + np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 1, a]) )
+                    lern_wip.whittle_indices[a][x] = np.maximum(0, lern_wip.whittle_indices[a][x] - np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 0, a]) ))
+
         # --- End TSDE Episode Check ---
 
         # Use the policy computed at the start of the *current* episode k
-        actions = plan_wip.take_action(n_choices, {"x": states})
-        learn_actions = lern_wip.take_action(n_choices, {"x": learn_states})
-        _learn_states = np.copy(learn_states)
+        discount_val = discount ** t
+        for s in range(sample_paths):
+            actions = plan_wip.take_action(n_choices, {"x": states[:, s]})
+            learn_actions = lern_wip.take_action(n_choices, {"x": learn_states[:, s]})
+            _learn_states = np.copy(learn_states[:, s])
+            for a in range(n_arms):
+                plan_rewards[a, s] = discount_val * true_rew[states[a, s], a]
+                learn_rewards[a, s] = discount_val * true_rew[learn_states[a, s], a]
+                states[a, s] = np.random.choice(n_states, p=true_dyn[states[a, s], :, actions[a], a])
+                learn_states[a, s] = np.random.choice(n_states, p=true_dyn[learn_states[a, s], :, learn_actions[a], a])
+                counts[_learn_states[a], learn_states[a, s], learn_actions[a], a] += 1
         for a in range(n_arms):
-            plan_totalrewards[a] += true_rew[states[a], a]
-            states[a] = np.random.choice(n_states, p=true_dyn[states[a], :, actions[a], a])
-            learn_totalrewards[a] += true_rew[learn_states[a], a]
-            learn_states[a] = np.random.choice(n_states, p=true_dyn[learn_states[a], :, learn_actions[a], a])
-            counts[_learn_states[a], learn_states[a], learn_actions[a], a] += 1
             results["learn_transitionerrors"][t, a] = np.max(np.abs(est_transitions[:, :, :, a] - true_dyn[:, :, :, a]))
+            results["plan_rewards"][t, a] = np.mean(plan_rewards[a, :])
+            results["learn_rewards"][t, a] = np.mean(learn_rewards[a, :])
             results["learn_indexerrors"][t, a] = np.max(np.abs(lern_wip.whittle_indices[a] - plan_wip.whittle_indices[a]))
-            results["plan_rewards"][t, a] = plan_totalrewards[a]
-            results["learn_rewards"][t, a] = learn_totalrewards[a]
-            est_transitions[:, :, :, a]
-            true_dyn[:, :, :, a]
-
-
 
     print(f"Iteration {i} (TSDE) end with duration: {time.time() - start_time}")
     return results

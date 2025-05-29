@@ -280,7 +280,7 @@ def run_a_inf_planning_combination(params):
 
 
 def run_learning_combination(params):
-    nt, ns, na, tt, ut, th, nc, l_episodes, n_episodes, n_iterations, save_data, PATH = params
+    nt, ns, na, tt, ut, th, nc, l_episodes, n_batches, n_iterations, save_data, PATH = params
 
     if tt == 'structured':
         prob_remain = numpy.round(numpy.linspace(0.1 / ns, 0.1 / ns, na), 2)
@@ -308,14 +308,14 @@ def run_learning_combination(params):
     w_trials = nt*ns*na
 
     prob_err_lr, indx_err_lr, _, obj_lr, _, obj_r = multiprocess_learn_LRAPTS(
-        n_iterations, l_episodes, n_episodes, nt, ns, na, nc, th, rew_vals, tt, markov_matrix, initial_states, ut[0], ut[1], 
+        n_iterations, l_episodes, n_batches, nt, ns, na, nc, th, rew_vals, tt, markov_matrix, initial_states, ut[0], ut[1], 
         save_data, f'{PATH}riskaware_{key_value}.joblib', w_range, w_trials
     )
     process_and_plot(prob_err_lr, indx_err_lr, obj_r, obj_lr, 'lr', PATH, key_value)
 
 
 def run_ns_learning_combination(params):
-    df, nt, ns, ng, na, tt, ut, th, nc, l_episodes, n_episodes, n_iterations, save_data, PATH = params
+    df, nt, ns, ng, na, tt, ut, th, nc, l_episodes, n_batches, n_iterations, save_data, PATH = params
 
     if tt == 'structured':
         prob_remain = numpy.round(numpy.linspace(0.1 / ns, 0.1 / ns, na), 2)
@@ -343,7 +343,7 @@ def run_ns_learning_combination(params):
     w_trials = nt*ns*na
 
     prob_err_lr, indx_err_lr, _, obj_lr, _, obj_r = multiprocess_ns_learn_LRAPTS(
-        n_iterations, l_episodes, n_episodes, nt, ns, ng, na, nc, th, rew_vals, tt, markov_matrix, initial_states, ut[0], ut[1], 
+        n_iterations, l_episodes, n_batches, nt, ns, ng, na, nc, th, rew_vals, tt, markov_matrix, initial_states, ut[0], ut[1], 
         save_data, f'{PATH}ns_riskaware_{key_value}.joblib', w_range, w_trials
     )
     process_and_plot(prob_err_lr, indx_err_lr, obj_r, obj_lr, 'lr', PATH, key_value)
@@ -369,6 +369,63 @@ def run_inf_learning_combination(params):
         numpy.random.shuffle(pr_pp_1)
         prob_remain = numpy.array([pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1])
         ns=3
+    elif tt == 'clinical-v2':
+        pr_ss_0 = np.round(np.linspace(0.596, 0.690, na), 3)
+        np.random.shuffle(pr_ss_0)
+        pr_sr_0 = np.round(np.linspace(0.045, 0.061, na), 3)
+        np.random.shuffle(pr_sr_0)
+        pr_sp_0 = np.round(np.linspace(0.201, 0.287, na), 3)
+        np.random.shuffle(pr_sp_0)
+        pr_rr_0 = np.round(np.linspace(0.759, 0.822, na), 3)
+        np.random.shuffle(pr_rr_0)
+        pr_rp_0 = np.round(np.linspace(0.130, 0.169, na), 3)
+        np.random.shuffle(pr_rp_0)
+        pr_pp_0 = np.round(np.linspace(0.882, 0.922, na), 3)
+        np.random.shuffle(pr_pp_0)
+        pr_ss_1 = np.round(np.linspace(0.733, 0.801, na), 3)
+        np.random.shuffle(pr_ss_1)
+        pr_sr_1 = np.round(np.linspace(0.047, 0.078, na), 3)
+        np.random.shuffle(pr_sr_1)
+        pr_sp_1 = np.round(np.linspace(0.115, 0.171, na), 3)
+        np.random.shuffle(pr_sp_1)
+        pr_rr_1 = np.round(np.linspace(0.758, 0.847, na), 3)
+        np.random.shuffle(pr_rr_1)
+        pr_rp_1 = np.round(np.linspace(0.121, 0.193, na), 3)
+        np.random.shuffle(pr_rp_1)
+        pr_pp_1 = np.round(np.linspace(0.879, 0.921, na), 3)
+        np.random.shuffle(pr_pp_1)
+        prob_remain = numpy.array([pr_ss_0, pr_sr_0, pr_sp_0, pr_rr_0, pr_rp_0, pr_pp_0, pr_ss_1, pr_sr_1, pr_sp_1, pr_rr_1, pr_rp_1, pr_pp_1])
+        ns = 4
+    elif tt == 'clinical-v3':
+        pr_ss_0 = np.round(np.linspace(0.668, 0.738, na), 3)
+        np.random.shuffle(pr_ss_0)
+        pr_sr_0 = np.round(np.linspace(0.045, 0.061, na), 3)
+        np.random.shuffle(pr_sr_0)
+        pr_rr_0 = np.round(np.linspace(0.831, 0.870, na), 3)
+        np.random.shuffle(pr_rr_0)
+        pr_pp_0 = np.round(np.linspace(0.882, 0.922, na), 3)
+        np.random.shuffle(pr_pp_0)
+        pr_ss_1 = np.round(np.linspace(0.782, 0.833, na), 3)
+        np.random.shuffle(pr_ss_1)
+        pr_sr_1 = np.round(np.linspace(0.047, 0.078, na), 3)
+        np.random.shuffle(pr_sr_1)
+        pr_rr_1 = np.round(np.linspace(0.807, 0.879, na), 3)
+        np.random.shuffle(pr_rr_1)
+        pr_pp_1 = np.round(np.linspace(0.879, 0.921, na), 3)
+        np.random.shuffle(pr_pp_1)
+        prob_remain = np.array([pr_ss_0, pr_sr_0, pr_rr_0, pr_pp_0, pr_ss_1, pr_sr_1, pr_rr_1, pr_pp_1])
+        ns = 4
+    elif tt == 'clinical-v4':
+        pr_ss_0 = np.round(np.linspace(0.713, 0.799, na), 3)
+        np.random.shuffle(pr_ss_0)
+        pr_pp_0 = np.round(np.linspace(0.882, 0.922, na), 3)
+        np.random.shuffle(pr_pp_0)
+        pr_ss_1 = np.round(np.linspace(0.829, 0.885, na), 3)
+        np.random.shuffle(pr_ss_1)
+        pr_pp_1 = np.round(np.linspace(0.879, 0.921, na), 3)
+        np.random.shuffle(pr_pp_1)
+        prob_remain = np.array([pr_ss_0, pr_pp_0, pr_ss_1, pr_pp_1])
+        ns = 3
 
     key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nd{nd}_na{na}_tt{tt}_ut{ut}_th{th}_nc{nc}'
     rew_vals = rewards_inf(df, nt, na, ns)
@@ -388,8 +445,7 @@ def run_avg_learning_combination(params):
     nt, ns, na, tt, nc, n_iterations, save_data, PATH = params
 
     if tt == 'structured':
-        prob_remain = numpy.round(numpy.linspace(0.1 / ns, 1 / ns, na), 2)
-        print(prob_remain)
+        prob_remain = numpy.round(numpy.linspace(0.1 / ns, 0.1 / ns, na), 2)
     elif tt == 'clinical':
         pr_ss_0 = numpy.round(numpy.linspace(0.657, 0.762, na), 3)
         numpy.random.shuffle(pr_ss_0)
@@ -405,6 +461,63 @@ def run_avg_learning_combination(params):
         numpy.random.shuffle(pr_pp_1)
         prob_remain = numpy.array([pr_ss_0, pr_sp_0, pr_pp_0, pr_ss_1, pr_sp_1, pr_pp_1])
         ns=3
+    elif tt == 'clinical-v2':
+        pr_ss_0 = np.round(np.linspace(0.596, 0.690, na), 3)
+        np.random.shuffle(pr_ss_0)
+        pr_sr_0 = np.round(np.linspace(0.045, 0.061, na), 3)
+        np.random.shuffle(pr_sr_0)
+        pr_sp_0 = np.round(np.linspace(0.201, 0.287, na), 3)
+        np.random.shuffle(pr_sp_0)
+        pr_rr_0 = np.round(np.linspace(0.759, 0.822, na), 3)
+        np.random.shuffle(pr_rr_0)
+        pr_rp_0 = np.round(np.linspace(0.130, 0.169, na), 3)
+        np.random.shuffle(pr_rp_0)
+        pr_pp_0 = np.round(np.linspace(0.882, 0.922, na), 3)
+        np.random.shuffle(pr_pp_0)
+        pr_ss_1 = np.round(np.linspace(0.733, 0.801, na), 3)
+        np.random.shuffle(pr_ss_1)
+        pr_sr_1 = np.round(np.linspace(0.047, 0.078, na), 3)
+        np.random.shuffle(pr_sr_1)
+        pr_sp_1 = np.round(np.linspace(0.115, 0.171, na), 3)
+        np.random.shuffle(pr_sp_1)
+        pr_rr_1 = np.round(np.linspace(0.758, 0.847, na), 3)
+        np.random.shuffle(pr_rr_1)
+        pr_rp_1 = np.round(np.linspace(0.121, 0.193, na), 3)
+        np.random.shuffle(pr_rp_1)
+        pr_pp_1 = np.round(np.linspace(0.879, 0.921, na), 3)
+        np.random.shuffle(pr_pp_1)
+        prob_remain = numpy.array([pr_ss_0, pr_sr_0, pr_sp_0, pr_rr_0, pr_rp_0, pr_pp_0, pr_ss_1, pr_sr_1, pr_sp_1, pr_rr_1, pr_rp_1, pr_pp_1])
+        ns = 4
+    elif tt == 'clinical-v3':
+        pr_ss_0 = np.round(np.linspace(0.668, 0.738, na), 3)
+        np.random.shuffle(pr_ss_0)
+        pr_sr_0 = np.round(np.linspace(0.045, 0.061, na), 3)
+        np.random.shuffle(pr_sr_0)
+        pr_rr_0 = np.round(np.linspace(0.831, 0.870, na), 3)
+        np.random.shuffle(pr_rr_0)
+        pr_pp_0 = np.round(np.linspace(0.882, 0.922, na), 3)
+        np.random.shuffle(pr_pp_0)
+        pr_ss_1 = np.round(np.linspace(0.782, 0.833, na), 3)
+        np.random.shuffle(pr_ss_1)
+        pr_sr_1 = np.round(np.linspace(0.047, 0.078, na), 3)
+        np.random.shuffle(pr_sr_1)
+        pr_rr_1 = np.round(np.linspace(0.807, 0.879, na), 3)
+        np.random.shuffle(pr_rr_1)
+        pr_pp_1 = np.round(np.linspace(0.879, 0.921, na), 3)
+        np.random.shuffle(pr_pp_1)
+        prob_remain = np.array([pr_ss_0, pr_sr_0, pr_rr_0, pr_pp_0, pr_ss_1, pr_sr_1, pr_rr_1, pr_pp_1])
+        ns = 4
+    elif tt == 'clinical-v4':
+        pr_ss_0 = np.round(np.linspace(0.713, 0.799, na), 3)
+        np.random.shuffle(pr_ss_0)
+        pr_pp_0 = np.round(np.linspace(0.882, 0.922, na), 3)
+        np.random.shuffle(pr_pp_0)
+        pr_ss_1 = np.round(np.linspace(0.829, 0.885, na), 3)
+        np.random.shuffle(pr_ss_1)
+        pr_pp_1 = np.round(np.linspace(0.879, 0.921, na), 3)
+        np.random.shuffle(pr_pp_1)
+        prob_remain = np.array([pr_ss_0, pr_pp_0, pr_ss_1, pr_pp_1])
+        ns = 3
 
     key_value = f'nt{nt}_ns{ns}_na{na}_tt{tt}_nc{nc}'
     rew_vals = rewards(nt, na, ns)

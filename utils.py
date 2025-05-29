@@ -58,7 +58,7 @@ def process_and_plot(prob_err, indx_err, perf_ref, perf_lrn, suffix, path, key_v
     plot_data(trn_err, 'Episodes', 'Max Probability Error', f'{path}per_{suffix}_{key_value}.pdf')
     plot_data(wis_err, 'Episodes', 'Max WI Error', f'{path}wer_{suffix}_{key_value}.pdf')
     plot_data(creg, 'Episodes', 'Cumulative Regret', f'{path}cumreg_{suffix}_{key_value}.pdf')
-    plot_data(creg, 'Episodes', 'Cumulative Regret', f'{path}cumregbounds_{suffix}_{key_value}.pdf', fill_bounds=bounds)
+    plot_data(bounds, 'Episodes', 'Cumulative Regret', f'{path}cumregbounds_{suffix}_{key_value}.pdf', fill_bounds=bounds)
     plot_data(reg, 'Episodes', 'Regret', f'{path}reg_{suffix}_{key_value}.pdf')
 
 
