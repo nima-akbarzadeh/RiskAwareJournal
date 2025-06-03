@@ -32,9 +32,9 @@ def estimate_structured_transition_probabilities(
     prob_remain = np.zeros(num_arms)
     for a in range(num_arms):
 
-        print(f"Arm {a}:")
-        print(f"Counts (0): {arm_counts[:, :, 0, a]}")
-        print(f"Counts (1): {arm_counts[:, :, 0, a]}")
+        # print(f"Arm {a}:")
+        # print(f"Counts (0): {arm_counts[:, :, 0, a]}")
+        # print(f"Counts (1): {arm_counts[:, :, 0, a]}")
 
         # Count transitions that follow the "stay" pattern vs "leave" pattern
         stay_count = 0
@@ -65,9 +65,9 @@ def estimate_structured_transition_probabilities(
         # Posterior mean: alpha[a] / (alpha[a] + beta[a])
         prob_remain[a] = np.random.beta(alpha[a], beta[a]) 
     
-    print(f"ALPHA = {alpha}")
-    print(f"BETA = {beta}")
-    print(prob_remain)
+    # print(f"ALPHA = {alpha}")
+    # print(f"BETA = {beta}")
+    # print(prob_remain)
     return get_transitions(num_arms, num_states, prob_remain, 'structured')
 
 
@@ -111,10 +111,10 @@ def process_learn_LRAPTS_iteration(i, l_episodes, n_batches, n_steps, n_states, 
             est_transitions = np.zeros((n_states, n_states, 2, n_arms))
             for a in range(n_arms):
                 for act in range(2):
-                    print('='*10)
-                    print(f"Arm = {a}")
-                    print(f"action : {act}")
-                    print(counts[:, :, act, a])
+                    # print('='*10)
+                    # print(f"Arm = {a}")
+                    # print(f"action : {act}")
+                    # print(counts[:, :, act, a])
                     for x in range(n_states):
                         est_transitions[x, :, act, a] = dirichlet.rvs(counts[x, :, act, a])[0]
         lern_wip = RiskAwareWhittle(n_states, n_arms, true_rew, est_transitions, n_steps, u_type, u_order, threshold)
@@ -345,18 +345,18 @@ def multiprocess_ns_learn_LRAPTS(
     all_learn_objectives = np.stack([res["learn_objectives"] for res in results])
     all_plan_rewards = np.stack([res["plan_rewards"] for res in results])
     all_plan_objectives = np.stack([res["plan_objectives"] for res in results])
-    print("ALL LEARNING") 
-    [print(all_learn_objective) for all_learn_objective in np.cumsum(np.sum(all_learn_objectives, axis=2), axis=1)]
-    print(f"AVG - {np.mean(np.cumsum(np.sum(all_learn_objectives, axis=2), axis=1), axis=0)}")
-    print(f"STD - {np.std(np.cumsum(np.sum(all_learn_objectives, axis=2), axis=1), axis=0)}") 
-    print("ALL PLANNING") 
-    [print(all_plan_objective) for all_plan_objective in np.cumsum(np.sum(all_plan_objectives, axis=2), axis=1)]
-    print(f"AVG - {np.mean(np.cumsum(np.sum(all_plan_objectives, axis=2), axis=1), axis=0)}")
-    print(f"STD - {np.std(np.cumsum(np.sum(all_plan_objectives, axis=2), axis=1), axis=0)}") 
-    print("ALL REGRET") 
-    [print(all_reg_objective) for all_reg_objective in np.cumsum(np.sum(all_plan_objectives - all_learn_objectives, axis=2), axis=1)]
-    print(f"AVG - {np.mean(np.cumsum(np.sum(all_plan_objectives - all_learn_objectives, axis=2), axis=1), axis=0)}")
-    print(f"STD - {np.std(np.cumsum(np.sum(all_plan_objectives - all_learn_objectives, axis=2), axis=1), axis=0)}") 
+    # print("ALL LEARNING") 
+    # [print(all_learn_objective) for all_learn_objective in np.cumsum(np.sum(all_learn_objectives, axis=2), axis=1)]
+    # print(f"AVG - {np.mean(np.cumsum(np.sum(all_learn_objectives, axis=2), axis=1), axis=0)}")
+    # print(f"STD - {np.std(np.cumsum(np.sum(all_learn_objectives, axis=2), axis=1), axis=0)}") 
+    # print("ALL PLANNING") 
+    # [print(all_plan_objective) for all_plan_objective in np.cumsum(np.sum(all_plan_objectives, axis=2), axis=1)]
+    # print(f"AVG - {np.mean(np.cumsum(np.sum(all_plan_objectives, axis=2), axis=1), axis=0)}")
+    # print(f"STD - {np.std(np.cumsum(np.sum(all_plan_objectives, axis=2), axis=1), axis=0)}") 
+    # print("ALL REGRET") 
+    # [print(all_reg_objective) for all_reg_objective in np.cumsum(np.sum(all_plan_objectives - all_learn_objectives, axis=2), axis=1)]
+    # print(f"AVG - {np.mean(np.cumsum(np.sum(all_plan_objectives - all_learn_objectives, axis=2), axis=1), axis=0)}")
+    # print(f"STD - {np.std(np.cumsum(np.sum(all_plan_objectives - all_learn_objectives, axis=2), axis=1), axis=0)}") 
 
     if save_data:
         joblib.dump([all_learn_transitionerrors, all_learn_indexerrors, all_learn_rewards, all_learn_objectives, all_plan_rewards, all_plan_objectives], filename)
@@ -475,10 +475,10 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
                 est_transitions = np.zeros((n_states, n_states, 2, n_arms))
                 for a in range(n_arms):
                     for act in range(2):
-                        print('='*10)
-                        print(f"Arm = {a}")
-                        print(f"action : {act}")
-                        print(counts[:, :, act, a])
+                        # print('='*10)
+                        # print(f"Arm = {a}")
+                        # print(f"action : {act}")
+                        # print(counts[:, :, act, a])
                         for x in range(n_states):
                             est_transitions[x, :, act, a] = dirichlet.rvs(counts[x, :, act, a])[0]
 
@@ -775,10 +775,10 @@ def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, tr
                 est_transitions = np.zeros((n_states, n_states, 2, n_arms))
                 for a in range(n_arms):
                     for act in range(2):
-                        print('='*10)
-                        print(f"Arm = {a}")
-                        print(f"action : {act}")
-                        print(counts[:, :, act, a])
+                        # print('='*10)
+                        # print(f"Arm = {a}")
+                        # print(f"action : {act}")
+                        # print(counts[:, :, act, a])
                         for x in range(n_states):
                             est_transitions[x, :, act, a] = dirichlet.rvs(counts[x, :, act, a])[0]
 
