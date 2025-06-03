@@ -43,8 +43,10 @@ def compute_bounds(perf_ref, perf_lrn):
     """
     avg_creg = numpy.mean(numpy.cumsum(numpy.sum(perf_ref - perf_lrn, axis=2), axis=1), axis=0)
     std_creg = numpy.std(numpy.cumsum(numpy.sum(perf_ref - perf_lrn, axis=2), axis=1), axis=0)
+    min_creg = numpy.min(numpy.cumsum(numpy.sum(perf_ref - perf_lrn, axis=2), axis=1), axis=0)
+    max_creg = numpy.max(numpy.cumsum(numpy.sum(perf_ref - perf_lrn, axis=2), axis=1), axis=0)
     avg_reg = [avg_creg[k] / (k + 1) for k in range(len(avg_creg))]
-    return avg_reg, avg_creg, (avg_creg - std_creg, avg_creg + std_creg)
+    return avg_reg, avg_creg, (avg_creg - std_creg, avg_creg + std_creg), (avg_creg - 3*std_creg, avg_creg + 3*std_creg), (min_creg, max_creg)
 
 
 def process_and_plot(prob_err, indx_err, perf_ref, perf_lrn, suffix, path, key_value):
@@ -53,12 +55,14 @@ def process_and_plot(prob_err, indx_err, perf_ref, perf_lrn, suffix, path, key_v
     """
     trn_err = numpy.mean(prob_err, axis=(0, 2))
     wis_err = numpy.mean(indx_err, axis=(0, 2))
-    reg, creg, bounds = compute_bounds(perf_ref, perf_lrn)
+    reg, creg, bounds, boundstri, minmax = compute_bounds(perf_ref, perf_lrn)
 
     plot_data(trn_err, 'Episodes', 'Max Probability Error', f'{path}per_{suffix}_{key_value}.pdf')
     plot_data(wis_err, 'Episodes', 'Max WI Error', f'{path}wer_{suffix}_{key_value}.pdf')
     plot_data(creg, 'Episodes', 'Cumulative Regret', f'{path}cumreg_{suffix}_{key_value}.pdf')
-    plot_data(bounds, 'Episodes', 'Cumulative Regret', f'{path}cumregbounds_{suffix}_{key_value}.pdf', fill_bounds=bounds)
+    plot_data(creg, 'Episodes', 'Cumulative Regret', f'{path}cumregbounds_{suffix}_{key_value}.pdf', fill_bounds=bounds)
+    plot_data(creg, 'Episodes', 'Cumulative Regret', f'{path}cumregboundstri_{suffix}_{key_value}.pdf', fill_bounds=boundstri)
+    plot_data(creg, 'Episodes', 'Cumulative Regret', f'{path}cumregminmax_{suffix}_{key_value}.pdf', fill_bounds=minmax)
     plot_data(reg, 'Episodes', 'Regret', f'{path}reg_{suffix}_{key_value}.pdf')
 
 
