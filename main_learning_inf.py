@@ -5,7 +5,7 @@ warnings.filterwarnings("ignore")
 
 
 def main():
-    n_steps = [100]
+    n_steps = [500]
     discounts = [0.9]
     n_iterations = 50
 
@@ -26,8 +26,8 @@ def main():
             'discount_factors': discounts,
             'n_steps': n_steps,
             'n_states': [0],
-            'n_augmnt': [50],
-            'n_discnt': [100],
+            'n_augmnt': [10],
+            'n_discnt': [50],
             'n_arms': [5],
             'transition_type': ['clinical'],
             'transition_type': ['clinical', 'clinical-v4', 'clinical-v2', 'clinical-v3'],
