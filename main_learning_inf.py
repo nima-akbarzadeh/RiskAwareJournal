@@ -19,7 +19,7 @@ def main():
             'n_arms': [5],
             'transition_type': ['structured'],
             'utility_functions': [(3, 8)],
-            'thresholds': [0.5, 0.75],
+            'thresholds': [0.25, 0.5],
             'arm_choices': [1]
         },
         {
@@ -32,7 +32,7 @@ def main():
             'transition_type': ['clinical'],
             'transition_type': ['clinical', 'clinical-v4', 'clinical-v2', 'clinical-v3'],
             'utility_functions': [(3, 8)],
-            'thresholds': [0.5, 0.75],
+            'thresholds': [0.25, 0.5],
             'arm_choices': [1]
         },
     ]
