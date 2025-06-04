@@ -13,13 +13,13 @@ def main():
         {
             'discount_factors': discounts,
             'n_steps': n_steps,
-            'n_states': [3, 4, 5],
+            'n_states': [3, 4],
             'n_augmnt': [10],
             'n_discnt': [50],
             'n_arms': [5],
             'transition_type': ['structured'],
-            'utility_functions': [(3, 8)],
-            'thresholds': [0.25, 0.5],
+            'utility_functions': [(2, 8), (3, 8)],
+            'thresholds': [0.1, 0.25],
             'arm_choices': [1]
         },
         {
@@ -31,8 +31,8 @@ def main():
             'n_arms': [5],
             'transition_type': ['clinical'],
             'transition_type': ['clinical', 'clinical-v4', 'clinical-v2', 'clinical-v3'],
-            'utility_functions': [(3, 8)],
-            'thresholds': [0.25, 0.5],
+            'utility_functions': [(2, 8), (3, 8)],
+            'thresholds': [0.1, 0.25],
             'arm_choices': [1]
         },
     ]
