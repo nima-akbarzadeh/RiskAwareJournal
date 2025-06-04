@@ -7,33 +7,33 @@ warnings.filterwarnings("ignore")
 def main():
     param_sets_list = [
         {
-            'discount_factors': [0.9],
-            'n_steps': [5],
-            'n_states': [3, 4, 5],
+            'discount_factors': [0.99],
+            'n_steps': [20],
+            'n_states': [3, 4],
             'n_augmnt': [50],
             'n_arms': [5],
             'transition_type': ['structured'],
-            'utility_functions': [(3, 8)],
+            'utility_functions': [(3, 16)],
             'thresholds': [0.5, 0.75],
             'arm_choices': [1]
         },
         {
-            'discount_factors': [0.9],
-            'n_steps': [5],
+            'discount_factors': [0.99],
+            'n_steps': [20],
             'n_states': [0],
             'n_augmnt': [50],
             'n_arms': [5],
             # 'transition_type': ['clinical'],
             'transition_type': ['clinical', 'clinical-v4', 'clinical-v2', 'clinical-v3'],
-            'utility_functions': [(3, 8)],
+            'utility_functions': [(3, 16)],
             'thresholds': [0.5, 0.75],
             'arm_choices': [1]
         },
     ]
 
     learning_episodes = 500
-    n_batches = 5
-    n_iterations = 50
+    n_batches = 10
+    n_iterations = 25
 
     save_data = True
     PATH = f'./learning-nsfinite-{learning_episodes}-{n_batches}-{n_iterations}/'

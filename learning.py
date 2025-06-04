@@ -427,7 +427,7 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
     lern_rawip.get_indices(w_range, w_trials)
     # ------------------------------------
 
-    sample_paths = 5
+    sample_paths = 10
     plan_totalrewards = np.zeros((n_arms, sample_paths))
     learn_totalrewards = np.zeros((n_arms, sample_paths))
     plan_utility = np.zeros((n_arms, sample_paths))

@@ -5,9 +5,9 @@ warnings.filterwarnings("ignore")
 
 
 def main():
-    n_steps = [500]
+    n_steps = [100]
     discounts = [0.9]
-    n_iterations = 50
+    n_iterations = 25
 
     param_sets_list = [
         {

@@ -9,7 +9,7 @@ from tqdm import tqdm  # Import tqdm
 
 # --- Configuration ---
 # IMPORTANT: Set this to the actual path where ALL your .joblib files are saved
-PATH = './planning-infinite-May25-Dset/'  # Example: '/path/to/output/data/'
+PATH = './planning-nsfinite-June25/'  # Example: '/path/to/output/data/'
 # --- End Configuration ---
 
 # Define the keys for evaluation metrics, same across all types
@@ -30,12 +30,13 @@ loaded_data = {
 }
 
 # Regex patterns for different filename structures
+# New: Separate patterns for infinite (with nd) and nonstationary (without nd)
 infinite_pattern = re.compile(
     r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nd(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
     r"_(Neutral|RewUtility|RiskAware)"
     r"\.joblib$"
 )
-ns_finite_pattern = re.compile(
+nonstationary_pattern = re.compile( # New pattern for nonstationary (no 'nd')
     r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
     r"_(Neutral|RewUtility|RiskAware)"
     r"\.joblib$"
@@ -49,8 +50,8 @@ finite_pattern = re.compile(
 print(f"Scanning directory: {PATH}...")
 print("Classifying files based on parameters:")
 print("- Finite: No 'df' key in filename.")
-print("- Nonstationary: Has 'df' key AND 'nt' <= 100.")
-print("- Infinite: Has 'df' key AND 'nt' > 100.")
+print("- Nonstationary: Has 'df' key but NO 'nd' key.")
+print("- Infinite: Has 'df' key AND 'nd' key.")
 
 # Get list of relevant files first for tqdm
 try:
@@ -80,36 +81,60 @@ for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100
     process_name = None
     na = None
 
-    # First, try matching the pattern WITH 'df' (for infinite and nonstationary)
-    # Since infinite_pattern and ns_finite_pattern are identical, we only need to use one.
-    match_with_df = infinite_pattern.match(filename)
-    if match_with_df:
+    # Try matching infinite pattern (with 'nd') first
+    match_infinite = infinite_pattern.match(filename)
+    if match_infinite:
         matched = True
+        experiment_type = 'infinite'
         try:
-            df = float(match_with_df.group(1))
-            nt = int(match_with_df.group(2))  # Extract nt to classify
-            ns = int(match_with_df.group(3))
-            ng = int(match_with_df.group(4))
-            nd = int(match_with_df.group(5))
-            nc = int(match_with_df.group(6))
-            ut_str = match_with_df.group(7)
+            df = float(match_infinite.group(1))
+            nt = int(match_infinite.group(2))
+            ns = int(match_infinite.group(3))
+            ng = int(match_infinite.group(4))
+            nd = int(match_infinite.group(5)) # 'nd' is present
+            nc = int(match_infinite.group(6))
+            ut_str = match_infinite.group(7)
             ut = ast.literal_eval(f"({ut_str})")
-            th = float(match_with_df.group(8))
-            fr = float(match_with_df.group(9))
-            process_name = match_with_df.group(10)
+            th = float(match_infinite.group(8))
+            fr = float(match_infinite.group(9))
+            process_name = match_infinite.group(10)
 
             params = {'df': df, 'nt': nt, 'ns': ns, 'ng': ng, 'nd': nd, 'nc': nc, 'ut': ut, 'th': th, 'fr': fr}
             key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nd{nd}_nc{nc}_ut{ut}_th{th}_fr{fr}'
             na = nc * ns
 
-            experiment_type = 'infinite'
-
         except Exception as e:
-            # Use tqdm.write for messages inside the loop to avoid interfering with the bar
-            tqdm.write(f"Warning: Error parsing DF-Present params from {filename}. Error: {e}")
+            tqdm.write(f"Warning: Error parsing Infinite params from {filename}. Error: {e}")
             matched = False
 
-    # If not matched above, try matching the pattern WITHOUT 'df' (Finite)
+    # If not matched as infinite, try nonstationary pattern (no 'nd')
+    if not matched:
+        match_nonstationary = nonstationary_pattern.match(filename)
+        if match_nonstationary:
+            matched = True
+            experiment_type = 'nonstationary'
+            try:
+                df = float(match_nonstationary.group(1))
+                nt = int(match_nonstationary.group(2))
+                ns = int(match_nonstationary.group(3))
+                ng = int(match_nonstationary.group(4))
+                # Removed 'nd' group here as per the new nonstationary pattern
+                nc = int(match_nonstationary.group(5))
+                ut_str = match_nonstationary.group(6)
+                ut = ast.literal_eval(f"({ut_str})")
+                th = float(match_nonstationary.group(7))
+                fr = float(match_nonstationary.group(8))
+                process_name = match_nonstationary.group(9)
+
+                params = {'df': df, 'nt': nt, 'ns': ns, 'ng': ng, 'nc': nc, 'ut': ut, 'th': th, 'fr': fr}
+                key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nc{nc}_ut{ut}_th{th}_fr{fr}'
+                na = nc * ns
+
+            except Exception as e:
+                tqdm.write(f"Warning: Error parsing Nonstationary params from {filename}. Error: {e}")
+                matched = False
+
+    # If still not matched, try finite pattern (no 'df')
     if not matched:
         match_finite = finite_pattern.match(filename)
         if match_finite:
