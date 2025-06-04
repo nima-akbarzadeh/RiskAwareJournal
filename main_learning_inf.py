@@ -29,7 +29,7 @@ def main():
             'n_augmnt': [10],
             'n_discnt': [50],
             'n_arms': [5],
-            'transition_type': ['clinical'],
+            # 'transition_type': ['clinical'],
             'transition_type': ['clinical', 'clinical-v4', 'clinical-v2', 'clinical-v3'],
             'utility_functions': [(2, 8), (3, 8)],
             'thresholds': [0.1, 0.25],
