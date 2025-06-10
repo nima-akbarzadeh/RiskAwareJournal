@@ -2,6 +2,79 @@ import numpy as np
 from utils import compute_utility
 
 
+def generate_random_vector(n, m):
+    """
+    Generates a random n-length vector with m ones.
+    """
+    if m > n:
+        raise ValueError("Number of ones (m) cannot be greater than vector length (n)")
+    
+    vector = np.zeros(n, dtype=int)
+    ones_indices = np.random.choice(n, m, replace=False)
+    vector[ones_indices] = 1
+    return vector
+
+
+def process_random_policy(n_iterations, n_steps, n_states, n_arms, n_choices, threshold, rewards, transitions, initial_states, u_type, u_order):
+
+    totalrewards = np.zeros((n_iterations, n_steps, n_arms))
+    objectives = np.zeros((n_iterations, n_steps, n_arms))
+    for k in range(n_iterations):
+        states = initial_states.copy()
+        for t in range(n_steps):
+            actions = generate_random_vector(n_arms, n_choices)
+            for a in range(n_arms):
+                if t == 0:
+                    totalrewards[k, t, a] = rewards[states[a], a]
+                else:
+                    totalrewards[k, t, a] = totalrewards[k, t-1, a] + rewards[states[a], a]
+                states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
+                objectives[k, t, a] = compute_utility(totalrewards[k, t, a], threshold, u_type, u_order)
+
+    return totalrewards, objectives
+
+
+def generate_greedy_actions(n_arms, n_choices, current_rewards):
+    """
+    Generates a vector of actions where 1 indicates selecting an arm
+    and 0 indicates not selecting it. It selects the n_choices arms
+    with the highest current rewards.
+    """
+    if n_choices > n_arms:
+        raise ValueError("Number of choices (n_choices) cannot be greater than number of arms (n_arms)")
+    
+    # Sort arms by reward in descending order and get their original indices
+    sorted_indices = np.argsort(current_rewards)[::-1]
+    
+    # Select the top n_choices indices
+    greedy_indices = sorted_indices[:n_choices]
+    
+    # Create the actions vector
+    actions = np.zeros(n_arms, dtype=int)
+    actions[greedy_indices] = 1
+    
+    return actions
+
+
+def process_myopic_policy(n_iterations, n_steps, n_states, n_arms, n_choices, threshold, rewards, transitions, initial_states, u_type, u_order):
+
+    totalrewards = np.zeros((n_iterations, n_steps, n_arms))
+    objectives = np.zeros((n_iterations, n_steps, n_arms))
+    for k in range(n_iterations):
+        states = initial_states.copy()
+        for t in range(n_steps):
+            actions = generate_greedy_actions(n_arms, n_choices, [rewards[states[a], a] for a in range(n_arms)])
+            for a in range(n_arms):
+                if t == 0:
+                    totalrewards[k, t, a] = rewards[states[a], a]
+                else:
+                    totalrewards[k, t, a] = totalrewards[k, t-1, a] + rewards[states[a], a]
+                states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
+                objectives[k, t, a] = compute_utility(totalrewards[k, t, a], threshold, u_type, u_order)
+
+    return totalrewards, objectives
+
+
 def process_neutral_whittle(Whittle, n_iterations, n_steps, n_states, n_arms, n_choices, 
                             threshold, rewards, transitions, initial_states, u_type, u_order):
 

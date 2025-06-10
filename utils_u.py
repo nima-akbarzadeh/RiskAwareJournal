@@ -434,11 +434,21 @@ def run_inf_learning_combination(params):
     w_range = 2*ng
     w_trials = ng*ns*na
 
-    prob_err_lr, indx_err_lr, _, obj_lr, _, obj_n = multiprocess_inf_learn_LRAPTSDE(
+    riskaware_res, baseline_res = multiprocess_inf_learn_LRAPTSDE(
         n_iterations, df, nt, ns, ng, nd, na, nc, th, rew_vals, tt, markov_matrix, initial_states, ut[0], ut[1], 
         save_data, f'{PATH}inf_riskaware_{key_value}.joblib', w_range, w_trials
     )
+    prob_err_lr, indx_err_lr, _, obj_lr, _, obj_n = riskaware_res
+    _, myopic_obj, _, random_obj = baseline_res
+
     process_and_plot(prob_err_lr, indx_err_lr, obj_n, obj_lr, 'lr', PATH, key_value)
+
+    avg_obj_nu = numpy.mean(numpy.sum(obj_n, axis=2), axis=0)
+    avg_obj_lr = numpy.mean(numpy.sum(obj_lr, axis=2), axis=0)
+    avg_obj_mp = numpy.mean(numpy.sum(myopic_obj, axis=2), axis=0)
+    avg_obj_rd = numpy.mean(numpy.sum(random_obj, axis=2), axis=0)
+    plot_data_dict = {"RWP": avg_obj_nu, "RWP-TS": avg_obj_lr, "MYP": avg_obj_mp, "RND": avg_obj_rd}
+    plot_data_inf(plot_data_dict, 'Episodes', 'Objective Value', f'{PATH}perf_{key_value}.pdf')
 
 
 def run_avg_learning_combination(params):

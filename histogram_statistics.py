@@ -4,15 +4,22 @@ import pandas as pd
 
 if __name__ == '__main__':
 
-    base_path = './planning-finite-9March25'
-    file_name = 'res.xlsx'
+    base_path = './planning-nsfinite-June25'
+    file_name = 'res_ns_loaded.xlsx'
     df = pd.read_excel(f'{base_path}/{file_name}')
     print(df.keys())
-    target_labels = ['MEAN-Ri_obj_riskaware_to_neutral'] 
+    target_labels = ['MEAN-RiObjRiskawareToNeutral'] 
+
+    # base_path = './planning-infinite-June25'
+    # file_name = 'res_inf_loaded.xlsx'
+    # df = pd.read_excel(f'{base_path}/{file_name}')
+    # print(df.keys())
+    # target_labels = ['MEAN-RiObjRiskawareToNeutral'] 
+    
     
     for target_label in target_labels:
         y = df[target_label]
-        y = df[df[target_label] <= 100][target_label]
+        # y = df[df[target_label] <= 100][target_label]
 
         print(f'Mean = {y.mean()}')
         min_val = y.min()
