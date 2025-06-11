@@ -38,12 +38,16 @@ loaded_data = {
 }
 
 # Regex patterns for different filename structures
-# Updated patterns to include Myopic and Random
 infinite_pattern = re.compile(
-    r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nd(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
+    r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nd(\d+)_nc(\d+)_tt(\s+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
     r"_(Neutral|RewUtility|RiskAware|Myopic|Random)"
     r"\.joblib$"
 )
+# infinite_pattern = re.compile(
+#     r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nd(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
+#     r"_(Neutral|RewUtility|RiskAware|Myopic|Random)"
+#     r"\.joblib$"
+# )
 nonstationary_pattern = re.compile(
     r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
     r"_(Neutral|RewUtility|RiskAware|Myopic|Random)"

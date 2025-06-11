@@ -6,20 +6,22 @@ warnings.filterwarnings("ignore")
 
 def main():
     n_steps = [100]
-    discounts = [0.99]
+    discounts = [0.9]
     n_iterations = 10
 
     param_sets_list = [
         {
             'discount_factors': discounts,
             'n_steps': n_steps,
-            'n_states': [2, 3],
+            'n_states': [2],
             'n_augmnt': [10],
             'n_discnt': [50, 100],
-            'n_arms': [5],
+            'n_arms': [4],
             'transition_type': ['structured'],
-            'utility_functions': [(1, 0), (2, 8), (3, 8)],
-            'thresholds': [0.1, 0.3, 0.5, 0.7, 0.9],
+            'utility_functions': [(1, 0)],
+            # 'utility_functions': [(1, 0), (2, 8), (3, 8)],
+            # 'thresholds': [0.1, 0.3, 0.5, 0.7, 0.9],
+            'thresholds': [0.5],
             'arm_choices': [1]
         },
         # {

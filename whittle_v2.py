@@ -72,11 +72,11 @@ def compute_indices(num_arms: int,
     
     for arm in range(num_arms):
         # Get initial shape from a dummy backward call
-        ref_pol, _, _ = backward_func(arm, 0)
+        ref_pol, _, ref_q = backward_func(arm, 0)
         arm_indices = np.zeros_like(ref_pol, dtype=float)
         
         penalty_ref = 0
-        ref_pol, _, _ = backward_func(arm, penalty_ref)
+        ref_pol, _, ref_q = backward_func(arm, penalty_ref)
         ubp_pol, _, _ = backward_func(arm, index_range)
         
         if policy_equal_func(ref_pol, ubp_pol):
@@ -98,14 +98,15 @@ def compute_indices(num_arms: int,
                     ub_temp = penalty
             
             penalty_ref = lb_temp + l_steps
-            nxt_pol, _, _ = backward_func(arm, penalty_ref)
+            nxt_pol, _, nxt_q = backward_func(arm, penalty_ref)
             
             flag, arm_indices = indexability_check_func(
-                arm_indices, nxt_pol, ref_pol, lb_temp, arm
+                arm_indices, nxt_pol, ref_pol, nxt_q, ref_q, lb_temp, arm
             )
             
             if flag:
                 ref_pol = nxt_pol.copy()
+                ref_q = nxt_q.copy()
             else:
                 break
         
@@ -165,7 +166,8 @@ class BaseWhittle(ABC):
     
     @abstractmethod
     def indexability_check(self, arm_indices: np.ndarray, nxt_pol: np.ndarray,
-                          ref_pol: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
+                          ref_pol: np.ndarray, nxt_q: np.ndarray,
+                          ref_q: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
         """Check indexability condition."""
         pass
     
@@ -231,12 +233,13 @@ class Whittle(BaseWhittle):
         return pi, V, Q
     
     def indexability_check(self, arm_indices: np.ndarray, nxt_pol: np.ndarray, 
-                           ref_pol: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
+                           ref_pol: np.ndarray, nxt_q: np.ndarray,
+                          ref_q: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
         """Check indexability condition."""
         for t in range(self.horizon):
             violations = (ref_pol[:, t] == 0) & (nxt_pol[:, t] == 1)
             if np.any(violations):
-                # print(f"Neutral - Not indexable at time {t}!")
+                print(f"Neutral - Not indexable at time {t}!")
                 return False, np.zeros((self.num_x, self.horizon))
             
             changes = (ref_pol[:, t] == 1) & (nxt_pol[:, t] == 0)
@@ -366,7 +369,8 @@ class RiskAwareWhittle(BaseWhittle):
         return pi, V, Q
     
     def indexability_check(self, arm_indices: np.ndarray, nxt_pol: np.ndarray,
-                          ref_pol: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
+                          ref_pol: np.ndarray, nxt_q: np.ndarray,
+                          ref_q: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
         """Check indexability for risk-aware setting."""
         realize_index = self.n_realize[arm]
         
@@ -377,7 +381,7 @@ class RiskAwareWhittle(BaseWhittle):
             
             violations = (ref_pol_t == 0) & (nxt_pol_t == 1)
             if np.any(violations):
-                # print(f"RA - Not indexable at time {t}!")
+                print(f"RA - Not indexable at time {t}!")
                 return False, np.zeros((self.n_augment[arm], self.num_x, self.horizon))
             
             changes = (ref_pol_t == 1) & (nxt_pol_t == 0)
@@ -406,7 +410,7 @@ class RiskAwareWhittle(BaseWhittle):
             indices = compute_indices(
                 num_arms=1,  # Process one arm at a time
                 backward_func=lambda a, p: self.backward(arm, p),
-                indexability_check_func=lambda idx, nxt, ref, pen, a: self.indexability_check(idx, nxt, ref, pen, arm),
+                indexability_check_func=lambda idx, nxt, ref, nxt_q, ref_q, pen, a: self.indexability_check(idx, nxt, ref, nxt_q, ref_q, pen, arm),
                 policy_equal_func=self.policy_equal,
                 index_range=index_range,
                 n_trials=n_trials
@@ -488,13 +492,21 @@ class RiskAwareWhittleNS(BaseWhittle):
                     Q[l, x, t, 1] = -penalty_term + self.transition[x, :, 1, arm] @ V[nxt_l, :, t + 1]
                     
                     # Optimal policy and value
+                    if Q[l, x, t, 0] < Q[l, x, t, 1]:
+                        pi[l, x, t] = 1
+                        V[l, x, t] = Q[l, x, t, 1]
+                    else:
+                        pi[l, x, t] = 0
+                        V[l, x, t] = Q[l, x, t, 0]
+
                     pi[l, x, t] = np.argmax(Q[l, x, t, :])
                     V[l, x, t] = np.max(Q[l, x, t, :])
         
         return pi, V, Q
     
     def indexability_check(self, arm_indices: np.ndarray, nxt_pol: np.ndarray,
-                          ref_pol: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
+                          ref_pol: np.ndarray, nxt_q: np.ndarray,
+                          ref_q: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
         """Check indexability for discretized augmented state."""
         for t in range(self.horizon):
             ref_pol_t = ref_pol[:, :, t]
@@ -502,7 +514,7 @@ class RiskAwareWhittleNS(BaseWhittle):
             
             violations = (ref_pol_t == 0) & (nxt_pol_t == 1)
             if np.any(violations):
-                # print(f"RA - Not indexable at time {t}!")
+                print(f"RA - Not indexable at time {t}!")
                 return False, np.zeros((self.n_augment, self.num_x, self.horizon))
             
             changes = (ref_pol_t == 1) & (nxt_pol_t == 0)
@@ -564,8 +576,9 @@ class BaseWhittleInf(ABC):
         pass
     
     @abstractmethod
-    def indexability_check(self, arm_indices: np.ndarray, nxt_pol: np.ndarray,
-                          ref_pol: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
+    def indexability_check(self, arm_indices: np.ndarray, nxt_pol: np.ndarray, 
+                           ref_pol: np.ndarray, nxt_q: np.ndarray, 
+                           ref_q: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
         """Check indexability condition."""
         pass
     
@@ -625,8 +638,13 @@ class WhittleInf(BaseWhittleInf):
                 Q[:, 1] = self.reward[:, arm] - penalty_term - rho + (self.transition[:, :, 1, arm] @ V)
                 
                 # Optimal policy and value
-                pi = np.argmax(Q, axis=1)
-                V = np.max(Q, axis=1)
+                for x in range(self.num_x):
+                    if Q[x, 0] < Q[x, 1]:
+                        pi[x] = 1
+                        V[x] = Q[x, 1]
+                    else:
+                        pi[x] = 0
+                        V[x] = Q[x, 0]
                 
                 # Update average reward estimate using the Bellman equation
                 # For average reward: rho = max_a [r(s,a) + sum_s' P(s'|s,a) * (V(s') - V(s))]
@@ -685,8 +703,13 @@ class WhittleInf(BaseWhittleInf):
                 Q[:, 1] = self.reward[:, arm] - penalty_term + self.discount * (self.transition[:, :, 1, arm] @ V)
                 
                 # Optimal policy and value
-                pi = np.argmax(Q, axis=1)
-                V = np.max(Q, axis=1)
+                for x in range(self.num_x):
+                    if Q[x, 0] < Q[x, 1]:
+                        pi[x] = 1
+                        V[x] = Q[x, 1]
+                    else:
+                        pi[x] = 0
+                        V[x] = Q[x, 0]
                 
                 # Check convergence
                 if np.max(np.abs(V - v_prev)) < self.convergence_tol:
@@ -694,12 +717,13 @@ class WhittleInf(BaseWhittleInf):
             
             return pi, V, Q
     
-    def indexability_check(self, arm_indices: np.ndarray, nxt_pol: np.ndarray,
-                          ref_pol: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
+    def indexability_check(self, arm_indices: np.ndarray, nxt_pol: np.ndarray, 
+                           ref_pol: np.ndarray, nxt_q: np.ndarray,
+                          ref_q: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
         """Check indexability for infinite horizon."""
         violations = (ref_pol == 0) & (nxt_pol == 1)
         if np.any(violations):
-            # print("Neutral - Not indexable!")
+            print("Neutral - Not indexable!")
             return False, np.zeros(self.num_x)
         
         changes = (ref_pol == 1) & (nxt_pol == 0)
@@ -783,21 +807,39 @@ class RiskAwareWhittleInf(BaseWhittleInf):
                     )
                     
                     # Q-values
-                    Q[y, x, t, 0] = self.transition[x, :, 0, arm] @ V[nxt_y, :, t + 1]
-                    Q[y, x, t, 1] = -penalty_term + self.transition[x, :, 1, arm] @ V[nxt_y, :, t + 1]
+                    Q[y, x, t, 0] = np.round(self.transition[x, :, 0, arm] @ V[nxt_y, :, t + 1], 3)
+                    Q[y, x, t, 1] = np.round(-penalty_term + self.transition[x, :, 1, arm] @ V[nxt_y, :, t + 1], 3)
                     
                     # Optimal policy and value
-                    pi[y, x, t] = np.argmax(Q[y, x, t, :])
-                    V[y, x, t] = np.max(Q[y, x, t, :])
+                    if Q[y, x, t, 0] < Q[y, x, t, 1]:
+                        pi[y, x, t] = Q[y, x, t, 1]
+                        V[y, x, t] = Q[y, x, t, 1]
+                    else:
+                        pi[y, x, t] = Q[y, x, t, 0]
+                        V[y, x, t] = Q[y, x, t, 0]
+
         
         return pi, V, Q
     
-    def indexability_check(self, arm_indices: np.ndarray, nxt_pol: np.ndarray,
-                          ref_pol: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
+    def indexability_check(self, arm_indices: np.ndarray, nxt_pol: np.ndarray, 
+                           ref_pol: np.ndarray, nxt_q: np.ndarray, 
+                           ref_q: np.ndarray, penalty: float, arm: int) -> Tuple[bool, np.ndarray]:
         """Check indexability for risk-aware infinite horizon."""
         violations = (ref_pol == 0) & (nxt_pol == 1)
         if np.any(violations):
-            # print("RA - Not indexable!")
+            print("RA - Not indexable!")
+            violation_indices = np.where(violations)
+            
+            print("Violating states (arm_indices, policy_next, policy_ref, q_next, q_ref):")
+            for i in range(len(violation_indices[0])):
+                current_indices = tuple(dim_idx[i] for dim_idx in violation_indices)
+                print(f"  State Index: {current_indices}")
+                print(f"    arm_index: {arm_indices[current_indices]}")
+                print(f"    pi_next: {nxt_pol[current_indices]}")
+                print(f"    pi_ref: {ref_pol[current_indices]}")
+                print(f"    q_next: {nxt_q[current_indices]}")
+                print(f"    q_ref: {ref_q[current_indices]}")
+
             return False, np.zeros((self.n_augment, self.num_x, self.num_t))
         
         changes = (ref_pol == 1) & (nxt_pol == 0)

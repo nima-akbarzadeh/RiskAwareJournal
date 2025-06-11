@@ -412,8 +412,8 @@ def run_a_inf_planning_combination(params):
     start_time = time.time()
     
     # Unpack parameters
-    df, nt, ns, ng, nd, nc, ut, th, fr, n_iterations, save_flag, PATH = params
-    key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nd{nd}_nc{nc}_ut{ut}_th{th}_fr{fr}'
+    df, nt, ns, ng, nd, nc, tt, ut, th, fr, n_iterations, save_flag, PATH = params
+    key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nd{nd}_nc{nc}_tt{tt}_ut{ut}_th{th}_fr{fr}'
     
     # Derived parameters
     nd = nt  # Ensure consistency
@@ -425,7 +425,7 @@ def run_a_inf_planning_combination(params):
     rew_vals = rewards_inf(df, nt, na, ns)
     rew_utility_vals = rewards_inf_utility(df, nt, na, ns, th, ut[0], ut[1])
     prob_remain = numpy.round(numpy.linspace(0.1 / ns, 1 / ns, na), 2)
-    markov_matrix = get_transitions(na, ns, prob_remain, 'structured')
+    markov_matrix = get_transitions(na, ns, prob_remain, tt)
 
     # Initialize planning algorithms
     Neutral_Whittle = WhittleInf(ns, na, rew_vals, markov_matrix, nt, df)

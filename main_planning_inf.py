@@ -14,32 +14,40 @@ if not os.path.exists(PATH):
 def main():
 
     param_sets = {
-        'discount_factors': [0.9, 0.99],
+        'discount_factors': [0.9],
         'n_steps': [100],
-        'n_states': [2, 3, 4],
-        'n_augmnt': [50],
-        'n_discnt': [50, 100],
-        'n_arms_coefficient': [3, 4],
-        'utility_functions': [(3, 4), (3, 16)],
-        'thresholds': [0.1, 0.3, 0.5, 0.7, 0.9],
-        'fraction_of_arms': [0.1, 0.3, 0.5]
+        'n_states': [2],
+        'n_augmnt': [10],
+        'n_discnt': [50],
+        'n_arms_coefficient': [2],
+        'transition_type': [
+            'structured',
+            # 'clinical',
+            # 'clinical-v2',
+            # 'clinical-v3',
+            # 'clinical-v4'
+        ],
+        'utility_functions': [(3, 16)],
+        'thresholds': [0.5],
+        'fraction_of_arms': [0.1]
     }
 
     # Iterations
-    n_iterations = 7
+    n_iterations = 200
 
     # Saving the results
     save_flag = True
 
     # Main run
     param_list = [
-        (df, nt, ns, ng, nd, nc, ut, th, fr, n_iterations, save_flag, PATH)
+        (df, nt, ns, ng, nd, nc, tt, ut, th, fr, n_iterations, save_flag, PATH)
         for df in param_sets['discount_factors']
         for nt in param_sets['n_steps']
         for ns in param_sets['n_states']
         for ng in param_sets['n_augmnt']
         for nd in param_sets['n_discnt']
         for nc in param_sets['n_arms_coefficient']
+        for tt in param_sets['transition_type']
         for ut in param_sets['utility_functions']
         for th in param_sets['thresholds']
         for fr in param_sets['fraction_of_arms']
