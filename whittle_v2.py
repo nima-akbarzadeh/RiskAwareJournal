@@ -236,7 +236,7 @@ class Whittle(BaseWhittle):
         for t in range(self.horizon):
             violations = (ref_pol[:, t] == 0) & (nxt_pol[:, t] == 1)
             if np.any(violations):
-                print(f"Neutral - Not indexable at time {t}!")
+                # print(f"Neutral - Not indexable at time {t}!")
                 return False, np.zeros((self.num_x, self.horizon))
             
             changes = (ref_pol[:, t] == 1) & (nxt_pol[:, t] == 0)
@@ -377,7 +377,7 @@ class RiskAwareWhittle(BaseWhittle):
             
             violations = (ref_pol_t == 0) & (nxt_pol_t == 1)
             if np.any(violations):
-                print(f"RA - Not indexable at time {t}!")
+                # print(f"RA - Not indexable at time {t}!")
                 return False, np.zeros((self.n_augment[arm], self.num_x, self.horizon))
             
             changes = (ref_pol_t == 1) & (nxt_pol_t == 0)
@@ -502,7 +502,7 @@ class RiskAwareWhittleNS(BaseWhittle):
             
             violations = (ref_pol_t == 0) & (nxt_pol_t == 1)
             if np.any(violations):
-                print(f"RA - Not indexable at time {t}!")
+                # print(f"RA - Not indexable at time {t}!")
                 return False, np.zeros((self.n_augment, self.num_x, self.horizon))
             
             changes = (ref_pol_t == 1) & (nxt_pol_t == 0)
@@ -613,15 +613,11 @@ class WhittleInf(BaseWhittleInf):
         pi = np.zeros(self.num_x, dtype=np.int32)
 
         if self.discount == 1:
-        
-            # Initialize average reward estimate
-            rho = 0.0  # Average reward per time step
 
             penalty_term = penalty
             
             for iteration in range(self.horizon):
                 v_prev = V.copy()
-                rho_prev = rho
                 
                 # Vectorized Q-value computation for average reward
                 # Q(s,a) = r(s,a) - rho + sum_s' P(s'|s,a) * V(s')
@@ -703,7 +699,7 @@ class WhittleInf(BaseWhittleInf):
         """Check indexability for infinite horizon."""
         violations = (ref_pol == 0) & (nxt_pol == 1)
         if np.any(violations):
-            print("Neutral - Not indexable!")
+            # print("Neutral - Not indexable!")
             return False, np.zeros(self.num_x)
         
         changes = (ref_pol == 1) & (nxt_pol == 0)
@@ -801,7 +797,7 @@ class RiskAwareWhittleInf(BaseWhittleInf):
         """Check indexability for risk-aware infinite horizon."""
         violations = (ref_pol == 0) & (nxt_pol == 1)
         if np.any(violations):
-            print("RA - Not indexable!")
+            # print("RA - Not indexable!")
             return False, np.zeros((self.n_augment, self.num_x, self.num_t))
         
         changes = (ref_pol == 1) & (nxt_pol == 0)

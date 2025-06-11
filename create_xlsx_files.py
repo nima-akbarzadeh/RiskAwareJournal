@@ -12,14 +12,22 @@ from tqdm import tqdm  # Import tqdm
 PATH = './planning-nsfinite-June25/'  # Example: '/path/to/output/data/'
 # --- End Configuration ---
 
-# Define the keys for evaluation metrics, same across all types
+# Define the keys for evaluation metrics, updated to include all policies
 eval_keys = [
-    'Neutral_Obj', 'RewUtility_Obj', 'RiskAware_Obj',
+    # Objective values
+    'Neutral_Obj', 'RewUtility_Obj', 'RiskAware_Obj', 'Myopic_Obj', 'Random_Obj',
+    # Relative improvements in objectives
     'RI_Obj_RiskAware_to_Neutral', 'RI_Obj_RiskAware_to_RewUtility', 'RI_Obj_RewUtility_to_Neutral',
+    'RI_Obj_Myopic_to_Neutral', 'RI_Obj_Random_to_Neutral',
+    # Absolute differences in objectives  
     'DF_Obj_RiskAware_to_Neutral', 'DF_Obj_RiskAware_to_RewUtility', 'DF_Obj_RewUtility_to_Neutral',
-    'Neutral_Rew', 'RewUtility_Rew', 'RiskAware_Rew',
-    'RI_Rew_Neutral_to_RiskAware', 'RI_Rew_Neutral_to_RewUtility',
-    'DF_Rew_Neutral_to_RiskAware', 'DF_Rew_Neutral_to_RewUtility'
+    'DF_Obj_Myopic_to_Neutral', 'DF_Obj_Random_to_Neutral',
+    # Reward values
+    'Neutral_Rew', 'RewUtility_Rew', 'RiskAware_Rew', 'Myopic_Rew', 'Random_Rew',
+    # Relative improvements in rewards (from perspective of neutral being better)
+    'RI_Rew_Neutral_to_RiskAware', 'RI_Rew_Neutral_to_RewUtility', 'RI_Rew_Neutral_to_Myopic', 'RI_Rew_Neutral_to_Random',
+    # Absolute differences in rewards
+    'DF_Rew_Neutral_to_RiskAware', 'DF_Rew_Neutral_to_RewUtility', 'DF_Rew_Neutral_to_Myopic', 'DF_Rew_Neutral_to_Random'
 ]
 
 # Dictionary to hold the loaded raw data, separated by experiment type
@@ -30,20 +38,20 @@ loaded_data = {
 }
 
 # Regex patterns for different filename structures
-# New: Separate patterns for infinite (with nd) and nonstationary (without nd)
+# Updated patterns to include Myopic and Random
 infinite_pattern = re.compile(
     r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nd(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
-    r"_(Neutral|RewUtility|RiskAware)"
+    r"_(Neutral|RewUtility|RiskAware|Myopic|Random)"
     r"\.joblib$"
 )
-nonstationary_pattern = re.compile( # New pattern for nonstationary (no 'nd')
+nonstationary_pattern = re.compile(
     r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
-    r"_(Neutral|RewUtility|RiskAware)"
+    r"_(Neutral|RewUtility|RiskAware|Myopic|Random)"
     r"\.joblib$"
 )
 finite_pattern = re.compile(
     r"nt(\d+)_ns(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
-    r"_(Neutral|RewUtility|RiskAware)"
+    r"_(Neutral|RewUtility|RiskAware|Myopic|Random)"
     r"\.joblib$"
 )
 
@@ -164,9 +172,20 @@ for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100
             filepath = os.path.join(PATH, filename)
             rew_array, obj_array = joblib.load(filepath)
 
+            # Handle different result structures for Myopic and Random vs others
+            # Only apply special handling for infinite horizon
+            if experiment_type == 'infinite' and process_name in ["Myopic", "Random"]:
+                # For infinite horizon Myopic and Random, use the last time step
+                obj_mean = numpy.mean(obj_array[:, -1, :])
+                rew_mean = numpy.mean(rew_array[:, -1, :])
+            else:
+                # For all other cases (finite, nonstationary, or infinite Neutral/RewUtility/RiskAware)
+                obj_mean = numpy.mean(obj_array)
+                rew_mean = numpy.mean(rew_array)
+
             loaded_data[experiment_type][key_value][process_name] = {
-                'obj': numpy.mean(obj_array),
-                'rew': numpy.mean(rew_array),
+                'obj': obj_mean,
+                'rew': rew_mean,
                 'na': na,
                 'params': params
             }
@@ -184,8 +203,6 @@ for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100
         count_skipped += 1
 
 
-# The rest of the script remains the same...
-
 print(f"\nFinished loading data.")  # Print after the loop/progress bar finishes
 print(f"Successfully loaded data from {count_loaded} files.")
 print(f"  Finite: {file_counts['finite']} files")
@@ -195,10 +212,14 @@ if count_skipped > 0:
     print(f"Skipped {count_skipped} files due to errors or format mismatch.")
 
 
+# Safe percentage improvement function (same as in planning functions)
+def safe_percentage_improvement(new_val, baseline_val):
+    return 100 * (new_val - baseline_val) / baseline_val if baseline_val != 0 else 0
+
+
 # --- Process data and save results for each experiment type ---
 for exp_type in ['finite', 'nonstationary', 'infinite']:
     print(f"\nProcessing loaded data for type: {exp_type.upper()}...")
-    # ...(Processing and saving logic remains unchanged)...
 
     if not loaded_data[exp_type]:
         print(f"No data loaded for type '{exp_type}'. Skipping.")
@@ -211,42 +232,72 @@ for exp_type in ['finite', 'nonstationary', 'infinite']:
 
     # 2. Process each key_value combination within the type
     for key_value, process_data in loaded_data[exp_type].items():
-        if "Neutral" in process_data and "RewUtility" in process_data and "RiskAware" in process_data:
+        # Check if all required policies are present
+        required_policies = ["Neutral", "RewUtility", "RiskAware", "Myopic", "Random"]
+        if all(policy in process_data for policy in required_policies):
+            # Extract results for all policies
             n_res = process_data["Neutral"]
             ru_res = process_data["RewUtility"]
             ra_res = process_data["RiskAware"]
+            my_res = process_data["Myopic"]
+            rd_res = process_data["Random"]
+            
             na = n_res['na']
             params = n_res['params']
 
-            # Calculate derived metrics (logic is identical)
+            # Extract objective and reward values
             neutral_obj = n_res['obj']
             rewutility_obj = ru_res['obj']
             riskaware_obj = ra_res['obj']
+            myopic_obj = my_res['obj']
+            random_obj = rd_res['obj']
+            
             neutral_rew = n_res['rew']
             rewutility_rew = ru_res['rew']
             riskaware_rew = ra_res['rew']
+            myopic_rew = my_res['rew']
+            random_rew = rd_res['rew']
 
-            improve_obj_rn = 100 * (riskaware_obj - neutral_obj) / neutral_obj if neutral_obj != 0 else 0
-            improve_obj_ru = 100 * (riskaware_obj - rewutility_obj) / rewutility_obj if rewutility_obj != 0 else 0
-            improve_obj_un = 100 * (rewutility_obj - neutral_obj) / neutral_obj if neutral_obj != 0 else 0
+            # Calculate relative improvements in objectives (percentage)
+            improve_obj_rn = safe_percentage_improvement(riskaware_obj, neutral_obj)
+            improve_obj_ru = safe_percentage_improvement(riskaware_obj, rewutility_obj)
+            improve_obj_un = safe_percentage_improvement(rewutility_obj, neutral_obj)
+            improve_obj_mn = safe_percentage_improvement(myopic_obj, neutral_obj)
+            improve_obj_dn = safe_percentage_improvement(random_obj, neutral_obj)
 
+            # Calculate absolute differences in objectives (scaled by na)
             diff_obj_rn = na * (riskaware_obj - neutral_obj)
             diff_obj_ru = na * (riskaware_obj - rewutility_obj)
             diff_obj_un = na * (rewutility_obj - neutral_obj)
+            diff_obj_mn = na * (myopic_obj - neutral_obj)
+            diff_obj_dn = na * (random_obj - neutral_obj)
 
-            improve_rew_nr = 100 * (neutral_rew - riskaware_rew) / riskaware_rew if riskaware_rew != 0 else 0
-            improve_rew_nu = 100 * (neutral_rew - rewutility_rew) / rewutility_rew if rewutility_rew != 0 else 0
+            # Calculate relative improvements in rewards (from neutral perspective)
+            improve_rew_nr = safe_percentage_improvement(neutral_rew, riskaware_rew)
+            improve_rew_nu = safe_percentage_improvement(neutral_rew, rewutility_rew)
+            improve_rew_nm = safe_percentage_improvement(neutral_rew, myopic_rew)
+            improve_rew_nd = safe_percentage_improvement(neutral_rew, random_rew)
 
+            # Calculate absolute differences in rewards (scaled by na)
             diff_rew_nr = na * (neutral_rew - riskaware_rew)
             diff_rew_nu = na * (neutral_rew - rewutility_rew)
+            diff_rew_nm = na * (neutral_rew - myopic_rew)
+            diff_rew_nd = na * (neutral_rew - random_rew)
 
+            # All calculated values in order matching eval_keys
             calculated_values = [
-                neutral_obj, rewutility_obj, riskaware_obj,
-                improve_obj_rn, improve_obj_ru, improve_obj_un,
-                diff_obj_rn, diff_obj_ru, diff_obj_un,
-                neutral_rew, rewutility_rew, riskaware_rew,
-                improve_rew_nr, improve_rew_nu,
-                diff_rew_nr, diff_rew_nu
+                # Objective values
+                neutral_obj, rewutility_obj, riskaware_obj, myopic_obj, random_obj,
+                # Relative improvements in objectives
+                improve_obj_rn, improve_obj_ru, improve_obj_un, improve_obj_mn, improve_obj_dn,
+                # Absolute differences in objectives
+                diff_obj_rn, diff_obj_ru, diff_obj_un, diff_obj_mn, diff_obj_dn,
+                # Reward values
+                neutral_rew, rewutility_rew, riskaware_rew, myopic_rew, random_rew,
+                # Relative improvements in rewards
+                improve_rew_nr, improve_rew_nu, improve_rew_nm, improve_rew_nd,
+                # Absolute differences in rewards
+                diff_rew_nr, diff_rew_nu, diff_rew_nm, diff_rew_nd
             ]
 
             # Store in results dict
@@ -264,7 +315,8 @@ for exp_type in ['finite', 'nonstationary', 'infinite']:
 
             processed_keys += 1
         else:
-            print(f"  Warning: Skipped key '{key_value}' for type '{exp_type}' due to missing process results (Neutral/RewUtility/RiskAware).")
+            missing_policies = [policy for policy in required_policies if policy not in process_data]
+            print(f"  Warning: Skipped key '{key_value}' for type '{exp_type}' due to missing policies: {missing_policies}")
 
 
     print(f"Finished processing {processed_keys} parameter combinations for type '{exp_type}'.")

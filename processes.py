@@ -14,8 +14,39 @@ def generate_random_vector(n, m):
     vector[ones_indices] = 1
     return vector
 
-
 def process_random_policy(n_iterations, n_steps, n_states, n_arms, n_choices, threshold, rewards, transitions, initial_states, u_type, u_order):
+
+    totalrewards = np.zeros((n_arms, n_iterations))
+    objectives = np.zeros((n_arms, n_iterations))
+    for k in range(n_iterations):
+        states = initial_states.copy()
+        for t in range(n_steps):
+            actions = generate_random_vector(n_arms, n_choices)
+            for a in range(n_arms):
+                totalrewards[a, k] += rewards[states[a], a]
+                states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
+        for a in range(n_arms):
+            objectives[a, k] = compute_utility(totalrewards[a, k], threshold, u_type, u_order)
+
+    return totalrewards, objectives
+
+def process_ns_random_policy(n_iterations, n_steps, n_states, n_arms, n_choices, threshold, rewards, transitions, initial_states, u_type, u_order):
+
+    totalrewards = np.zeros((n_arms, n_iterations))
+    objectives = np.zeros((n_arms, n_iterations))
+    for k in range(n_iterations):
+        states = initial_states.copy()
+        for t in range(n_steps):
+            actions = generate_random_vector(n_arms, n_choices)
+            for a in range(n_arms):
+                totalrewards[a, k] += rewards[states[a], t, a]
+                states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
+            for a in range(n_arms):
+                objectives[a, k] = compute_utility(totalrewards[a, k], threshold, u_type, u_order)
+
+    return totalrewards, objectives
+
+def process_inf_random_policy(n_iterations, discount, n_steps, n_states, n_arms, n_choices, threshold, rewards, transitions, initial_states, u_type, u_order):
 
     totalrewards = np.zeros((n_iterations, n_steps, n_arms))
     objectives = np.zeros((n_iterations, n_steps, n_arms))
@@ -27,7 +58,7 @@ def process_random_policy(n_iterations, n_steps, n_states, n_arms, n_choices, th
                 if t == 0:
                     totalrewards[k, t, a] = rewards[states[a], a]
                 else:
-                    totalrewards[k, t, a] = totalrewards[k, t-1, a] + rewards[states[a], a]
+                    totalrewards[k, t, a] = totalrewards[k, t-1, a] + (discount ** t) * rewards[states[a], a]
                 states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
                 objectives[k, t, a] = compute_utility(totalrewards[k, t, a], threshold, u_type, u_order)
 
@@ -55,8 +86,39 @@ def generate_greedy_actions(n_arms, n_choices, current_rewards):
     
     return actions
 
-
 def process_myopic_policy(n_iterations, n_steps, n_states, n_arms, n_choices, threshold, rewards, transitions, initial_states, u_type, u_order):
+
+    totalrewards = np.zeros((n_arms, n_iterations))
+    objectives = np.zeros((n_arms, n_iterations))
+    for k in range(n_iterations):
+        states = initial_states.copy()
+        for t in range(n_steps):
+            actions = generate_greedy_actions(n_arms, n_choices, [rewards[states[a], a] for a in range(n_arms)])
+            for a in range(n_arms):
+                totalrewards[a, k] += rewards[states[a], a]
+                states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
+        for a in range(n_arms):        
+            objectives[a, k] = compute_utility(totalrewards[a, k], threshold, u_type, u_order)
+
+    return totalrewards, objectives
+
+def process_ns_myopic_policy(n_iterations, n_steps, n_states, n_arms, n_choices, threshold, rewards, transitions, initial_states, u_type, u_order):
+
+    totalrewards = np.zeros((n_arms, n_iterations))
+    objectives = np.zeros((n_arms, n_iterations))
+    for k in range(n_iterations):
+        states = initial_states.copy()
+        for t in range(n_steps):
+            actions = generate_greedy_actions(n_arms, n_choices, [rewards[states[a], t, a] for a in range(n_arms)])
+            for a in range(n_arms):
+                totalrewards[a, k] += rewards[states[a], t, a]
+                states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
+        for a in range(n_arms):
+            objectives[a, k] = compute_utility(totalrewards[a, k], threshold, u_type, u_order)
+
+    return totalrewards, objectives
+
+def process_inf_myopic_policy(n_iterations, discount, n_steps, n_states, n_arms, n_choices, threshold, rewards, transitions, initial_states, u_type, u_order):
 
     totalrewards = np.zeros((n_iterations, n_steps, n_arms))
     objectives = np.zeros((n_iterations, n_steps, n_arms))
@@ -68,7 +130,7 @@ def process_myopic_policy(n_iterations, n_steps, n_states, n_arms, n_choices, th
                 if t == 0:
                     totalrewards[k, t, a] = rewards[states[a], a]
                 else:
-                    totalrewards[k, t, a] = totalrewards[k, t-1, a] + rewards[states[a], a]
+                    totalrewards[k, t, a] = totalrewards[k, t-1, a] + (discount ** t) * rewards[states[a], a]
                 states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
                 objectives[k, t, a] = compute_utility(totalrewards[k, t, a], threshold, u_type, u_order)
 
@@ -91,7 +153,6 @@ def process_neutral_whittle(Whittle, n_iterations, n_steps, n_states, n_arms, n_
             objectives[a, k] = compute_utility(totalrewards[a, k], threshold, u_type, u_order)
 
     return totalrewards, objectives
-
 
 def process_neutral_whittle_learning(Whittle, Whittle_learn, n_iterations, n_steps, n_states, n_arms, n_choices, 
                                      threshold, rewards, transitions, initial_states, u_type, u_order):
@@ -138,7 +199,6 @@ def process_riskaware_whittle(raWhittle, n_iterations, n_steps, n_states, n_arms
             objectives[a, k] = compute_utility(totalrewards[a, k], threshold, u_type, u_order)
 
     return totalrewards, objectives
-
 
 def process_riskaware_whittle_learning(raWhittle, raWhittle_learn, n_iterations, n_steps, n_states, n_arms, 
                                        n_choices, threshold, rewards, transitions, initial_states, u_type, u_order):
@@ -188,7 +248,6 @@ def process_ns_neutral_whittle(Whittle, n_iterations, n_steps, n_states, n_arms,
 
     return totalrewards, objectives
 
-
 def process_ns_riskaware_whittle(raWhittle, n_iterations, n_steps, n_states, n_arms, n_choices, 
                                  threshold, rewards, transitions, initial_states, u_type, u_order):
 
@@ -207,7 +266,6 @@ def process_ns_riskaware_whittle(raWhittle, n_iterations, n_steps, n_states, n_a
             objectives[a, k] = compute_utility(totalrewards[a, k], threshold, u_type, u_order)
 
     return totalrewards, objectives
-
 
 def process_ns_riskaware_whittle_learning(raWhittle, raWhittle_learn, n_iterations, n_steps, n_states, n_arms, n_choices, 
                                           threshold, rewards, transitions, initial_states, u_type, u_order):
@@ -259,7 +317,6 @@ def process_inf_neutral_whittle(Whittle, n_iterations, discount, n_steps, n_stat
 
     return totalrewards, objectives
 
-
 def process_inf_riskaware_whittle(raWhittle, Whittle, n_discount, n_iterations, discount, n_steps, n_states, n_arms, n_choices, 
                                   threshold, rewards, transitions, initial_states, u_type, u_order):
 
@@ -284,7 +341,6 @@ def process_inf_riskaware_whittle(raWhittle, Whittle, n_discount, n_iterations, 
             objectives[a, k] = compute_utility(totalrewards[a, k], threshold, u_type, u_order)
 
     return totalrewards, objectives
-
 
 def process_inf_riskaware_whittle_learning(raWhittle, raWhittle_learn, discount, n_steps, n_states, n_arms, n_choices, 
                                            threshold, rewards, transitions, initial_states, u_type, u_order):
