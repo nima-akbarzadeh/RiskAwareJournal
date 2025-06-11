@@ -48,19 +48,17 @@ def process_ns_random_policy(n_iterations, n_steps, n_states, n_arms, n_choices,
 
 def process_inf_random_policy(n_iterations, discount, n_steps, n_states, n_arms, n_choices, threshold, rewards, transitions, initial_states, u_type, u_order):
 
-    totalrewards = np.zeros((n_iterations, n_steps, n_arms))
-    objectives = np.zeros((n_iterations, n_steps, n_arms))
+    totalrewards = np.zeros((n_arms, n_iterations))
+    objectives = np.zeros((n_arms, n_iterations))
     for k in range(n_iterations):
         states = initial_states.copy()
         for t in range(n_steps):
             actions = generate_random_vector(n_arms, n_choices)
             for a in range(n_arms):
-                if t == 0:
-                    totalrewards[k, t, a] = rewards[states[a], a]
-                else:
-                    totalrewards[k, t, a] = totalrewards[k, t-1, a] + (discount ** t) * rewards[states[a], a]
+                totalrewards[a, k] += (discount ** t) * rewards[states[a], a]
                 states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
-                objectives[k, t, a] = compute_utility(totalrewards[k, t, a], threshold, u_type, u_order)
+        for a in range(n_arms):
+            objectives[a, k] = compute_utility(totalrewards[a, k], threshold, u_type, u_order)
 
     return totalrewards, objectives
 
@@ -120,19 +118,17 @@ def process_ns_myopic_policy(n_iterations, n_steps, n_states, n_arms, n_choices,
 
 def process_inf_myopic_policy(n_iterations, discount, n_steps, n_states, n_arms, n_choices, threshold, rewards, transitions, initial_states, u_type, u_order):
 
-    totalrewards = np.zeros((n_iterations, n_steps, n_arms))
-    objectives = np.zeros((n_iterations, n_steps, n_arms))
+    totalrewards = np.zeros((n_arms, n_iterations))
+    objectives = np.zeros((n_arms, n_iterations))
     for k in range(n_iterations):
         states = initial_states.copy()
         for t in range(n_steps):
             actions = generate_greedy_actions(n_arms, n_choices, [rewards[states[a], a] for a in range(n_arms)])
             for a in range(n_arms):
-                if t == 0:
-                    totalrewards[k, t, a] = rewards[states[a], a]
-                else:
-                    totalrewards[k, t, a] = totalrewards[k, t-1, a] + (discount ** t) * rewards[states[a], a]
+                totalrewards[a, k] += (discount ** t) * rewards[states[a], a]
                 states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
-                objectives[k, t, a] = compute_utility(totalrewards[k, t, a], threshold, u_type, u_order)
+        for a in range(n_arms):
+            objectives[a, k] = compute_utility(totalrewards[a, k], threshold, u_type, u_order)
 
     return totalrewards, objectives
 

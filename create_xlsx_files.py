@@ -9,7 +9,7 @@ from tqdm import tqdm  # Import tqdm
 
 # --- Configuration ---
 # IMPORTANT: Set this to the actual path where ALL your .joblib files are saved
-PATH = './planning-nsfinite-June25/'  # Example: '/path/to/output/data/'
+PATH = './planning-infinite-June25/'  # Example: '/path/to/output/data/'
 # --- End Configuration ---
 
 # Define the keys for evaluation metrics, updated to include all policies
@@ -172,16 +172,8 @@ for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100
             filepath = os.path.join(PATH, filename)
             rew_array, obj_array = joblib.load(filepath)
 
-            # Handle different result structures for Myopic and Random vs others
-            # Only apply special handling for infinite horizon
-            if experiment_type == 'infinite' and process_name in ["Myopic", "Random"]:
-                # For infinite horizon Myopic and Random, use the last time step
-                obj_mean = numpy.mean(obj_array[:, -1, :])
-                rew_mean = numpy.mean(rew_array[:, -1, :])
-            else:
-                # For all other cases (finite, nonstationary, or infinite Neutral/RewUtility/RiskAware)
-                obj_mean = numpy.mean(obj_array)
-                rew_mean = numpy.mean(rew_array)
+            obj_mean = numpy.mean(obj_array)
+            rew_mean = numpy.mean(rew_array)
 
             loaded_data[experiment_type][key_value][process_name] = {
                 'obj': obj_mean,
