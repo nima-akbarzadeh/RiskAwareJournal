@@ -9,8 +9,13 @@ from tqdm import tqdm  # Import tqdm
 
 # --- Configuration ---
 # IMPORTANT: Set this to the actual path where ALL your .joblib files are saved
-PATH = './planning-infinite-June25/'  # Example: '/path/to/output/data/'
+PATH = './FINAL/planning-infinite-June25/'  # Example: '/path/to/output/data/'
 # --- End Configuration ---
+
+param_filters = {
+    'th': [0.6, 0.7],
+    'fr': [0.5],
+}
 
 # Define the keys for evaluation metrics, updated to include all policies
 eval_keys = [
@@ -37,33 +42,138 @@ loaded_data = {
     'infinite': defaultdict(dict)
 }
 
-# Regex patterns for different filename structures
-infinite_pattern = re.compile(
-    r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nd(\d+)_nc(\d+)_tt(\s+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
+# Updated regex patterns to handle both old and new formats
+# New infinite pattern (with 'tt' parameter)
+infinite_new_pattern = re.compile(
+    r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nd(\d+)_nc(\d+)_tt([^_]+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
     r"_(Neutral|RewUtility|RiskAware|Myopic|Random)"
     r"\.joblib$"
 )
-# infinite_pattern = re.compile(
-#     r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nd(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
-#     r"_(Neutral|RewUtility|RiskAware|Myopic|Random)"
-#     r"\.joblib$"
-# )
+# Old infinite pattern (without 'tt' parameter)
+infinite_old_pattern = re.compile(
+    r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nd(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
+    r"_(Neutral|RewUtility|RiskAware|Myopic|Random)"
+    r"\.joblib$"
+)
+# Nonstationary pattern (no 'nd' parameter)
 nonstationary_pattern = re.compile(
     r"df([\d.]+)_nt(\d+)_ns(\d+)_ng(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
     r"_(Neutral|RewUtility|RiskAware|Myopic|Random)"
     r"\.joblib$"
 )
+# Finite pattern (no 'df' parameter)
 finite_pattern = re.compile(
     r"nt(\d+)_ns(\d+)_nc(\d+)_ut\((.*?)\)_th([\d.]+)_fr([\d.]+)"
     r"_(Neutral|RewUtility|RiskAware|Myopic|Random)"
     r"\.joblib$"
 )
 
+def parse_filename(filename):
+    """
+    Parse filename and return experiment type, parameters, and process name.
+    Returns tuple: (experiment_type, params, key_value, process_name, na)
+    """
+    
+    # Try new infinite pattern first (with 'tt')
+    match = infinite_new_pattern.match(filename)
+    if match:
+        try:
+            df = float(match.group(1))
+            nt = int(match.group(2))
+            ns = int(match.group(3))
+            ng = int(match.group(4))
+            nd = int(match.group(5))
+            nc = int(match.group(6))
+            tt = match.group(7)  # Keep 'tt' as string (e.g., "structured")
+            ut_str = match.group(8)
+            ut = ast.literal_eval(f"({ut_str})")
+            th = float(match.group(9))
+            fr = float(match.group(10))
+            process_name = match.group(11)
+
+            params = {'df': df, 'nt': nt, 'ns': ns, 'ng': ng, 'nd': nd, 'nc': nc, 'tt': tt, 'ut': ut, 'th': th, 'fr': fr}
+            key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nd{nd}_nc{nc}_tt{tt}_ut{ut}_th{th}_fr{fr}'
+            na = nc * ns
+            
+            return ('infinite', params, key_value, process_name, na)
+        except Exception as e:
+            tqdm.write(f"Warning: Error parsing New Infinite params from {filename}. Error: {e}")
+    
+    # Try old infinite pattern (without 'tt')
+    match = infinite_old_pattern.match(filename)
+    if match:
+        try:
+            df = float(match.group(1))
+            nt = int(match.group(2))
+            ns = int(match.group(3))
+            ng = int(match.group(4))
+            nd = int(match.group(5))
+            nc = int(match.group(6))
+            ut_str = match.group(7)
+            ut = ast.literal_eval(f"({ut_str})")
+            th = float(match.group(8))
+            fr = float(match.group(9))
+            process_name = match.group(10)
+
+            params = {'df': df, 'nt': nt, 'ns': ns, 'ng': ng, 'nd': nd, 'nc': nc, 'ut': ut, 'th': th, 'fr': fr}
+            key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nd{nd}_nc{nc}_ut{ut}_th{th}_fr{fr}'
+            na = nc * ns
+            
+            return ('infinite', params, key_value, process_name, na)
+        except Exception as e:
+            tqdm.write(f"Warning: Error parsing Old Infinite params from {filename}. Error: {e}")
+
+    # Try nonstationary pattern (has 'df' but no 'nd')
+    match = nonstationary_pattern.match(filename)
+    if match:
+        try:
+            df = float(match.group(1))
+            nt = int(match.group(2))
+            ns = int(match.group(3))
+            ng = int(match.group(4))
+            nc = int(match.group(5))
+            ut_str = match.group(6)
+            ut = ast.literal_eval(f"({ut_str})")
+            th = float(match.group(7))
+            fr = float(match.group(8))
+            process_name = match.group(9)
+
+            params = {'df': df, 'nt': nt, 'ns': ns, 'ng': ng, 'nc': nc, 'ut': ut, 'th': th, 'fr': fr}
+            key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nc{nc}_ut{ut}_th{th}_fr{fr}'
+            na = nc * ns
+            
+            return ('nonstationary', params, key_value, process_name, na)
+        except Exception as e:
+            tqdm.write(f"Warning: Error parsing Nonstationary params from {filename}. Error: {e}")
+
+    # Try finite pattern (no 'df')
+    match = finite_pattern.match(filename)
+    if match:
+        try:
+            nt = int(match.group(1))
+            ns = int(match.group(2))
+            nc = int(match.group(3))
+            ut_str = match.group(4)
+            ut = ast.literal_eval(f"({ut_str})")
+            th = float(match.group(5))
+            fr = float(match.group(6))
+            process_name = match.group(7)
+
+            params = {'nt': nt, 'ns': ns, 'nc': nc, 'ut': ut, 'th': th, 'fr': fr}
+            key_value = f'nt{nt}_ns{ns}_nc{nc}_ut{ut}_th{th}_fr{fr}'
+            na = nc * ns
+            
+            return ('finite', params, key_value, process_name, na)
+        except Exception as e:
+            tqdm.write(f"Warning: Error parsing Finite params from {filename}. Error: {e}")
+    
+    return (None, None, None, None, None)
+
 print(f"Scanning directory: {PATH}...")
 print("Classifying files based on parameters:")
 print("- Finite: No 'df' key in filename.")
 print("- Nonstationary: Has 'df' key but NO 'nd' key.")
-print("- Infinite: Has 'df' key AND 'nd' key.")
+print("- Infinite: Has 'df' key AND 'nd' key (supports both old and new formats with/without 'tt').")
 
 # Get list of relevant files first for tqdm
 try:
@@ -77,101 +187,34 @@ except FileNotFoundError:
     print(f"\nError: Directory not found: {PATH}")
     exit()  # Exit if directory doesn't exist
 
-
 count_loaded = 0
 count_skipped = 0
 file_counts = {'finite': 0, 'nonstationary': 0, 'infinite': 0}
+format_counts = {'infinite_new': 0, 'infinite_old': 0}
 
 # 1. Load data from all joblib files and classify them
 # Wrap the joblib_files list with tqdm for the progress bar
 for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100):
+    
+    # Parse filename using the new unified function
+    experiment_type, params, key_value, process_name, na = parse_filename(filename)
+    
+    # Load data if parsing was successful
+    if experiment_type and key_value and process_name is not None:
 
-    matched = False
-    experiment_type = None
-    params = {}
-    key_value = None
-    process_name = None
-    na = None
+        ## MODIFIED: Check if the file should be filtered based on its parameters.
+        should_skip = False
+        for param_key, rejected_values in param_filters.items():
+            # Check if the parameter from the filter exists in the parsed parameters
+            if param_key in params and params[param_key] in rejected_values:
+                tqdm.write(f"Info: Skipping '{filename}' due to filter rule: {param_key}={params[param_key]}")
+                should_skip = True
+                break  # A match was found, no need to check other filters for this file
 
-    # Try matching infinite pattern (with 'nd') first
-    match_infinite = infinite_pattern.match(filename)
-    if match_infinite:
-        matched = True
-        experiment_type = 'infinite'
-        try:
-            df = float(match_infinite.group(1))
-            nt = int(match_infinite.group(2))
-            ns = int(match_infinite.group(3))
-            ng = int(match_infinite.group(4))
-            nd = int(match_infinite.group(5)) # 'nd' is present
-            nc = int(match_infinite.group(6))
-            ut_str = match_infinite.group(7)
-            ut = ast.literal_eval(f"({ut_str})")
-            th = float(match_infinite.group(8))
-            fr = float(match_infinite.group(9))
-            process_name = match_infinite.group(10)
+        if should_skip:
+            count_skipped += 1
+            continue # Skip to the next file
 
-            params = {'df': df, 'nt': nt, 'ns': ns, 'ng': ng, 'nd': nd, 'nc': nc, 'ut': ut, 'th': th, 'fr': fr}
-            key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nd{nd}_nc{nc}_ut{ut}_th{th}_fr{fr}'
-            na = nc * ns
-
-        except Exception as e:
-            tqdm.write(f"Warning: Error parsing Infinite params from {filename}. Error: {e}")
-            matched = False
-
-    # If not matched as infinite, try nonstationary pattern (no 'nd')
-    if not matched:
-        match_nonstationary = nonstationary_pattern.match(filename)
-        if match_nonstationary:
-            matched = True
-            experiment_type = 'nonstationary'
-            try:
-                df = float(match_nonstationary.group(1))
-                nt = int(match_nonstationary.group(2))
-                ns = int(match_nonstationary.group(3))
-                ng = int(match_nonstationary.group(4))
-                # Removed 'nd' group here as per the new nonstationary pattern
-                nc = int(match_nonstationary.group(5))
-                ut_str = match_nonstationary.group(6)
-                ut = ast.literal_eval(f"({ut_str})")
-                th = float(match_nonstationary.group(7))
-                fr = float(match_nonstationary.group(8))
-                process_name = match_nonstationary.group(9)
-
-                params = {'df': df, 'nt': nt, 'ns': ns, 'ng': ng, 'nc': nc, 'ut': ut, 'th': th, 'fr': fr}
-                key_value = f'df{df}_nt{nt}_ns{ns}_ng{ng}_nc{nc}_ut{ut}_th{th}_fr{fr}'
-                na = nc * ns
-
-            except Exception as e:
-                tqdm.write(f"Warning: Error parsing Nonstationary params from {filename}. Error: {e}")
-                matched = False
-
-    # If still not matched, try finite pattern (no 'df')
-    if not matched:
-        match_finite = finite_pattern.match(filename)
-        if match_finite:
-            matched = True
-            experiment_type = 'finite'  # Classified as Finite
-            try:
-                nt = int(match_finite.group(1))
-                ns = int(match_finite.group(2))
-                nc = int(match_finite.group(3))
-                ut_str = match_finite.group(4)
-                ut = ast.literal_eval(f"({ut_str})")
-                th = float(match_finite.group(5))
-                fr = float(match_finite.group(6))
-                process_name = match_finite.group(7)
-
-                params = {'nt': nt, 'ns': ns, 'nc': nc, 'ut': ut, 'th': th, 'fr': fr}
-                key_value = f'nt{nt}_ns{ns}_nc{nc}_ut{ut}_th{th}_fr{fr}'
-                na = nc * ns
-
-            except Exception as e:
-                tqdm.write(f"Warning: Error parsing Finite params from {filename}. Error: {e}")
-                matched = False
-
-    # Load data if a pattern was matched and parsed successfully
-    if matched and experiment_type and key_value and process_name is not None:
         try:
             filepath = os.path.join(PATH, filename)
             rew_array, obj_array = joblib.load(filepath)
@@ -185,7 +228,16 @@ for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100
                 'na': na,
                 'params': params
             }
+            
             file_counts[experiment_type] += 1
+            
+            # Track format types for infinite horizon
+            if experiment_type == 'infinite':
+                if 'tt' in params:
+                    format_counts['infinite_new'] += 1
+                else:
+                    format_counts['infinite_old'] += 1
+                    
             count_loaded += 1
         except FileNotFoundError:
             tqdm.write(f"Warning: File not found (might have been moved/deleted): {filepath}")
@@ -194,24 +246,23 @@ for filename in tqdm(joblib_files, desc="Scanning files", unit="file", ncols=100
             tqdm.write(f"Warning: Could not load data from {filepath}. Error: {e}")
             count_skipped += 1
     else:  # File was .joblib but didn't match expected patterns or failed parsing
-        if not matched:  # Avoid double-warning if parsing failed above
-            tqdm.write(f"Warning: Filename format mismatch, skipped: {filename}")
+        tqdm.write(f"Warning: Filename format mismatch, skipped: {filename}")
         count_skipped += 1
-
 
 print(f"\nFinished loading data.")  # Print after the loop/progress bar finishes
 print(f"Successfully loaded data from {count_loaded} files.")
 print(f"  Finite: {file_counts['finite']} files")
 print(f"  Non-Stationary: {file_counts['nonstationary']} files")
 print(f"  Infinite Horizon: {file_counts['infinite']} files")
+if file_counts['infinite'] > 0:
+    print(f"    - New format (with tt): {format_counts['infinite_new']} files")
+    print(f"    - Old format (without tt): {format_counts['infinite_old']} files")
 if count_skipped > 0:
     print(f"Skipped {count_skipped} files due to errors or format mismatch.")
-
 
 # Safe percentage improvement function (same as in planning functions)
 def safe_percentage_improvement(new_val, baseline_val):
     return 100 * (new_val - baseline_val) / baseline_val if baseline_val != 0 else 0
-
 
 # --- Process data and save results for each experiment type ---
 for exp_type in ['finite', 'nonstationary', 'infinite']:
@@ -314,15 +365,27 @@ for exp_type in ['finite', 'nonstationary', 'infinite']:
             missing_policies = [policy for policy in required_policies if policy not in process_data]
             print(f"  Warning: Skipped key '{key_value}' for type '{exp_type}' due to missing policies: {missing_policies}")
 
-
     print(f"Finished processing {processed_keys} parameter combinations for type '{exp_type}'.")
 
-    # 3. Calculate final averages
-    print(f"Calculating final averages for type '{exp_type}'...")
+    # 3. Calculate final averages and additional statistics
+    print(f"Calculating final averages and additional statistics for type '{exp_type}'...")
     final_averages = {
         key: {param_key: numpy.mean(values) if values else 0 for param_key, values in avg_data.items()}
         for key, avg_data in averages.items()
     }
+    
+    # Calculate additional statistics for RI_Obj_RiskAware_to_Neutral
+    target_metric = 'RI_Obj_RiskAware_to_Neutral'
+    if target_metric in averages:
+        # Initialize dictionaries for additional statistics
+        max_stats = {param_key: numpy.max(values) if values else 0 for param_key, values in averages[target_metric].items()}
+        min_stats = {param_key: numpy.min(values) if values else 0 for param_key, values in averages[target_metric].items()}
+        below_zero_stats = {param_key: numpy.mean([v < 0 for v in values]) if values else 0 for param_key, values in averages[target_metric].items()}
+        
+        # Add these to final_averages with appropriate names
+        final_averages[f'{target_metric}_MAX'] = max_stats
+        final_averages[f'{target_metric}_MIN'] = min_stats
+        final_averages[f'{target_metric}_BELOW_ZERO'] = below_zero_stats
 
     # --- Start: Add natural sorting logic ---
     unique_param_keys = set()
@@ -364,20 +427,35 @@ for exp_type in ['finite', 'nonstationary', 'infinite']:
     except Exception as e:
         print(f"Error saving detailed results ({exp_type}) to Excel: {e}")
 
-    # --- Saving averaged results (df_averages) with sorting ---
+    # --- Saving averaged results (df_averages) with sorting and additional statistics ---
     print(f"Saving averaged results ({exp_type}) to: {averages_excel_path}")
     try:
         df_averages = pd.DataFrame(final_averages)
         valid_sorted_keys = [key for key in sorted_param_keys if key in df_averages.index]
         df_averages = df_averages.reindex(index=valid_sorted_keys)
 
-        df_averages.columns = [f'MEAN-{col.replace("_", " ").title().replace(" ", "")}' for col in df_averages.columns]
+        # Apply column name transformation
+        new_columns = []
+        for col in df_averages.columns:
+            if col.endswith('_MAX'):
+                base_col = col.replace('_MAX', '')
+                new_col_name = f'MAX-{base_col.replace("_", " ").title().replace(" ", "")}'
+            elif col.endswith('_MIN'):
+                base_col = col.replace('_MIN', '')
+                new_col_name = f'MIN-{base_col.replace("_", " ").title().replace(" ", "")}'
+            elif col.endswith('_BELOW_ZERO'):
+                base_col = col.replace('_BELOW_ZERO', '')
+                new_col_name = f'BELOW_ZERO-{base_col.replace("_", " ").title().replace(" ", "")}'
+            else:
+                new_col_name = f'MEAN-{col.replace("_", " ").title().replace(" ", "")}'
+            new_columns.append(new_col_name)
+        
+        df_averages.columns = new_columns
         df_averages.index.name = 'Param_Value'
 
         df_averages.to_excel(averages_excel_path)
         print(f"Averaged results ({exp_type}) saved successfully.")
     except Exception as e:
         print(f"Error saving averaged results ({exp_type}) to Excel: {e}")
-
 
 print("\nScript finished.")

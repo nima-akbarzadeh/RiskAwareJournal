@@ -422,7 +422,7 @@ def process_inf_learn_LRAPNTSDE_iteration(i, discount, n_steps, n_states, n_arms
     lern_wip.get_indices(w_range, w_trials)
     # ------------------------------------
 
-    sample_paths = 10
+    sample_paths = 1
     learn_totalrewards = np.zeros((n_arms, sample_paths))
     learn_utility = np.zeros((n_arms, sample_paths))
     learn_states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
@@ -538,7 +538,7 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
     lern_rawip.get_indices(w_range, w_trials)
     # ------------------------------------
 
-    sample_paths = 10
+    sample_paths = 1
     learn_totalrewards = np.zeros((n_arms, sample_paths))
     learn_utility = np.zeros((n_arms, sample_paths))
     learn_lifted = np.zeros((n_arms, sample_paths), dtype=np.int32)
@@ -693,9 +693,9 @@ def multiprocess_inf_learn_LRAPTSDE(
 
     # Define all processes to evaluate
     processes = [
-        ("RND", lambda *args: process_inf_random_policy(*args)),
-        ("MYP", lambda *args: process_inf_myopic_policy(*args)),
-        ("WIP", lambda *args: process_inf_neutral_whittle(plan_wip, *args)),
+        # ("RND", lambda *args: process_inf_random_policy(*args)),
+        # ("MYP", lambda *args: process_inf_myopic_policy(*args)),
+        # ("WIP", lambda *args: process_inf_neutral_whittle(plan_wip, *args)),
         ("RAP", lambda *args: process_inf_riskaware_whittle(plan_rawip, plan_wip, n_discounts, *args))
     ]
 

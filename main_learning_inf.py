@@ -5,38 +5,37 @@ warnings.filterwarnings("ignore")
 
 
 def main():
-    n_steps = [100]
-    discounts = [0.9]
+    n_steps = [200]
+    discounts = [0.99, 0.95, 0.9]
     n_iterations = 10
 
     param_sets_list = [
         {
             'discount_factors': discounts,
             'n_steps': n_steps,
-            'n_states': [2],
+            'n_states': [3, 4, 5],
             'n_augmnt': [10],
-            'n_discnt': [50, 100],
-            'n_arms': [4],
+            'n_discnt': [100],
+            'n_arms': [10],
             'transition_type': ['structured'],
-            'utility_functions': [(1, 0)],
-            # 'utility_functions': [(1, 0), (2, 8), (3, 8)],
-            # 'thresholds': [0.1, 0.3, 0.5, 0.7, 0.9],
-            'thresholds': [0.5],
+            'utility_functions': [(3, 16), (3, 4), (3, 8)],
+            'thresholds': [0.4, 0.5, 0.6],
             'arm_choices': [1]
         },
-        # {
-        #     'discount_factors': discounts,
-        #     'n_steps': n_steps,
-        #     'n_states': [0],
-        #     'n_augmnt': [10],
-        #     'n_discnt': [50, 100],
-        #     'n_arms': [5],
-        #     # 'transition_type': ['clinical'],
-        #     'transition_type': ['clinical', 'clinical-v4', 'clinical-v2', 'clinical-v3'],
-        #     'utility_functions': [(1, 0), (2, 8), (3, 8)],
-        #     'thresholds': [0.1, 0.3, 0.5, 0.7, 0.9],
-        #     'arm_choices': [1]
-        # },
+        {
+            'discount_factors': discounts,
+            'n_steps': n_steps,
+            'n_states': [0],
+            'n_augmnt': [10],
+            'n_discnt': [100],
+            'n_arms': [10],
+            # 'transition_type': ['clinical'],
+            'transition_type': ['clinical', 'clinical-v4', 'clinical-v3'],
+            # 'transition_type': ['clinical-v2'],
+            'utility_functions': [(3, 16), (3, 4), (3, 8)],
+            'thresholds': [0.4, 0.5, 0.6],
+            'arm_choices': [1]
+        },
     ]
 
     save_data = True
