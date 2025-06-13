@@ -662,7 +662,7 @@ def run_inf_learning_combination(params):
     w_range = 2*ng
     w_trials = ng*ns*na
 
-    riskaware_results, neutral_results, baseline_results = multiprocess_inf_learn_LRAPTSDE(
+    oracle_results, riskaware_results, neutral_results, baseline_results = multiprocess_inf_learn_LRAPTSDE(
         n_iterations, df, nt, ns, ng, nd, na, nc, th, rew_vals, tt, markov_matrix, initial_states, ut[0], ut[1], 
         save_data, f'{PATH}inf_riskaware_{key_value}.joblib', w_range, w_trials
     )
@@ -670,7 +670,7 @@ def run_inf_learning_combination(params):
     process_and_plot_inf(
         prob_err=riskaware_results["transitionerrors"], 
         indx_err=riskaware_results["indexerrors"], 
-        perf_ref=baseline_results["RAP_obj"], 
+        perf_ref=oracle_results["objectives"], 
         perf_lrn=riskaware_results["objectives"], 
         perf_bas=neutral_results["objectives"], 
         perf_stt = {key: value for key, value in baseline_results.items() if key.endswith('_obj') and not key.startswith('RAP')}, 

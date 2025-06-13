@@ -338,6 +338,33 @@ def process_inf_riskaware_whittle(raWhittle, Whittle, n_discount, n_iterations, 
 
     return totalrewards, objectives
 
+def process_inftime_riskaware_whittle(raWhittle, Whittle, n_discount, discount, n_steps, n_states, n_arms, n_choices, 
+                                      threshold, rewards, transitions, initial_states, u_type, u_order):
+    results = {
+        "totalrewards": np.zeros((n_steps, n_arms)),
+        "objectives": np.zeros((n_steps, n_arms)),
+    }
+    lifted = np.zeros(n_arms, dtype=np.int32)
+    states = initial_states.copy()
+    for t in range(n_steps):
+        if t < n_discount:
+            actions = raWhittle.take_action(n_choices, {"l": lifted, "x": states, "t": t})
+        else:
+            actions = Whittle.take_action(n_choices, {"x": states})
+        for a in range(n_arms):
+            if t == 0:
+                results["totalrewards"][t, a] = 0
+            else:
+                discount_val = discount ** t
+                results["totalrewards"][t, a] = results["totalrewards"][t-1, a] + discount_val * rewards[states[a], a]
+            if t < n_discount:
+                lifted[a] = raWhittle.get_reward_partition(results["totalrewards"][t, a])
+            states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
+            results["objectives"][t, a] = compute_utility(results["totalrewards"][t, a], threshold, u_type, u_order)
+
+    return results
+
+
 def process_inf_riskaware_whittle_learning(raWhittle, raWhittle_learn, discount, n_steps, n_states, n_arms, n_choices, 
                                            threshold, rewards, transitions, initial_states, u_type, u_order):
     

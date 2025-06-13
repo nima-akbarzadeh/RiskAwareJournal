@@ -657,6 +657,21 @@ def multiprocess_inf_learn_LRAPTSDE(
     plan_rawip.get_indices(w_range, w_trials)
 
     # Define arguments for each iteration
+    oracle_args = [
+        (plan_rawip, plan_wip, n_discounts, discount, n_steps, n_states, n_arms, n_choices, 
+         threshold, true_rew, true_dyn, initial_states, u_type, u_order) for _ in range(n_iterations)
+    ]
+
+    # Use multiprocessing pool
+    with Pool(num_workers) as pool:
+        oracle_res = pool.starmap(process_inftime_riskaware_whittle, oracle_args)
+
+    # Aggregate results
+    oracle_results = {}
+    oracle_results["rewards"] = np.stack([res["totalrewards"] for res in oracle_res])
+    oracle_results["objectives"] = np.stack([res["objectives"] for res in oracle_res])
+
+    # Define arguments for each iteration
     args = [
         (i, discount, n_steps, n_states, n_augmnts, n_discounts, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, 
          u_order, plan_wip, plan_rawip, w_range, w_trials) 
@@ -691,27 +706,27 @@ def multiprocess_inf_learn_LRAPTSDE(
     neutral_results["rewards"] = np.stack([res["learn_rewards"] for res in neutral_res])
     neutral_results["objectives"] = np.stack([res["learn_objectives"] for res in neutral_res])
 
-    # Define all processes to evaluate
-    processes = [
-        # ("RND", lambda *args: process_inf_random_policy(*args)),
-        # ("MYP", lambda *args: process_inf_myopic_policy(*args)),
-        # ("WIP", lambda *args: process_inf_neutral_whittle(plan_wip, *args)),
-        ("RAP", lambda *args: process_inf_riskaware_whittle(plan_rawip, plan_wip, n_discounts, *args))
-    ]
-
     # Run all processes and collect results
     baseline_results = {}
-    common_args = (n_iterations, discount, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order)
+    # common_args = (n_iterations, discount, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order)
     
-    for name, process in processes:
-        rew, obj = process(*common_args)
-        baseline_results[f"{name}_rew"] = rew
-        baseline_results[f"{name}_obj"] = obj
+    # # Define all processes to evaluate
+    # processes = [
+    #     ("RND", lambda *args: process_inf_random_policy(*args)),
+    #     ("MYP", lambda *args: process_inf_myopic_policy(*args)),
+    #     ("WIP", lambda *args: process_inf_neutral_whittle(plan_wip, *args)),
+    #     ("RAP", lambda *args: process_inf_riskaware_whittle(plan_rawip, plan_wip, n_discounts, *args))
+    # ]
+
+    # for name, process in processes:
+    #     rew, obj = process(*common_args)
+    #     baseline_results[f"{name}_rew"] = rew
+    #     baseline_results[f"{name}_obj"] = obj
 
     if save_data:
-        joblib.dump([riskaware_results, neutral_results, baseline_results], filename)
+        joblib.dump([oracle_results, riskaware_results, neutral_results, baseline_results], filename)
 
-    return riskaware_results, neutral_results, baseline_results
+    return oracle_results, riskaware_results, neutral_results, baseline_results
 
 
 def process_avg_learn_TSDE_iteration(i, n_steps, n_states, n_arms, n_choices, true_rew, trans_type, true_dyn, initial_states, plan_wip, w_range, w_trials):

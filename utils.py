@@ -144,7 +144,10 @@ def process_and_plot_inf(prob_err, indx_err, perf_ref, perf_lrn, suffix, path, k
     
     # trn_err = numpy.mean(prob_err, axis=(0, 2))
     # wis_err = numpy.mean(indx_err, axis=(0, 2))
-    arg_for_perf_ref = numpy.tile(numpy.sum(perf_ref, axis=0)[:, numpy.newaxis], (1, perf_lrn.shape[1]))
+
+    # arg_for_perf_ref = numpy.tile(numpy.sum(perf_ref, axis=0)[:, numpy.newaxis], (1, perf_lrn.shape[1]))
+    
+    arg_for_perf_ref = numpy.sum(perf_ref, axis=2)
     arg_for_perf_lrn = numpy.sum(perf_lrn, axis=2)
 
     arg_for_perf_stt['RAP'] = numpy.mean(arg_for_perf_ref, axis=0)
@@ -178,5 +181,5 @@ def process_and_plot_inf(prob_err, indx_err, perf_ref, perf_lrn, suffix, path, k
     #     for key, perf_res in perf_stt.items():
     #         mean_of_summed_perf_res = numpy.mean(numpy.sum(perf_res, axis=0))
     #         arg_for_perf_stt[key] = mean_of_summed_perf_res * numpy.ones(perf_lrn.shape[1])
-    plot_data(arg_for_perf_stt, 'Episodes', 'Objective', f'{path}perf_{suffix}_{key_value}.pdf', fill_bounds_dict=arg_for_bnds_stt)
+    plot_data(arg_for_perf_stt, 'Episodes', 'SUA', f'{path}perf_{suffix}_{key_value}.pdf', fill_bounds_dict=arg_for_bnds_stt)
  

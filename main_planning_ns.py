@@ -15,38 +15,16 @@ if not os.path.exists(PATH):
 
 def main():
 
-    # # Combinations
-    # param_sets = {
-    #     'discount_factors': [0.67, 0.75, 0.8, 0.9],
-    #     'n_steps': [20],
-    #     'n_states': [2, 3, 4],
-    #     'n_augmnt': [50],
-    #     'n_arms_coefficient': [3, 4, 5],
-    #     'utility_functions': [(1, 0), (2, 4), (2, 16), (3, 4), (3, 16)],
-    #     'thresholds': [numpy.round(0.1 * n, 1) for n in range(1, 10)],
-    #     'fraction_of_arms': [0.1, 0.3, 0.5]
-    # }
-    # # param_sets = {
-    # #     'discount_factors': [0.9999],
-    # #     'n_steps': [3, 4, 5],
-    # #     'n_states': [2, 3, 4],
-    # #     'n_augmnt': [50],
-    # #     'n_arms_coefficient': [3, 4, 5],
-    # #     'utility_functions': [(1, 0), (2, 4), (2, 16), (3, 4), (3, 16)],
-    # #     'thresholds': [numpy.round(0.1 * n, 1) for n in range(1, 10)],
-    # #     'fraction_of_arms': [0.1, 0.3, 0.5]
-    # # }
-
     # Combinations
     param_sets = {
-        'discount_factors': [0.9, 0.99],
-        'n_steps': [5, 10, 20, 50],
-        'n_states': [2, 3, 4],
+        'discount_factors': [0.8, 0.9, 0.99],
+        'n_steps': [5],
+        'n_states': [3, 4, 5],
         'n_augmnt': [50],
-        'n_arms_coefficient': [3, 4],
-        'utility_functions': [(3, 4), (3, 16)],
-        'thresholds': [0.1, 0.3, 0.5, 0.7, 0.9],
-        'fraction_of_arms': [0.1, 0.3, 0.5]
+        'n_arms_coefficient': [3, 4, 5],
+        'utility_functions': [(1, 0), (2, 4), (2, 8), (2, 16), (3, 4), (3, 8), (3, 16)],
+        'thresholds': [0.5, 0.6, 0.7],
+        'fraction_of_arms': [0.1, 0.3]
     }
 
     # Iterations

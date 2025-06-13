@@ -14,22 +14,16 @@ if not os.path.exists(PATH):
 def main():
 
     param_sets = {
-        'discount_factors': [0.9],
+        'discount_factors': [0.8, 0.9, 0.99],
         'n_steps': [100],
-        'n_states': [2],
-        'n_augmnt': [10],
-        'n_discnt': [50],
-        'n_arms_coefficient': [2],
-        'transition_type': [
-            'structured',
-            # 'clinical',
-            # 'clinical-v2',
-            # 'clinical-v3',
-            # 'clinical-v4'
-        ],
-        'utility_functions': [(3, 16)],
-        'thresholds': [0.5],
-        'fraction_of_arms': [0.1]
+        'n_states': [3, 4, 5],
+        'n_augmnt': [50],
+        'n_discnt': [100],
+        'n_arms_coefficient': [3, 4, 5],
+        'transition_type': ['structured'],
+        'utility_functions': [(1, 0), (2, 4), (2, 8), (2, 16), (3, 4), (3, 8), (3, 16)],
+        'thresholds': [0.3, 0.4, 0.5],
+        'fraction_of_arms': [0.1, 0.3]
     }
 
     # Iterations
