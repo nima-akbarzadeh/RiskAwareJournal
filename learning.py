@@ -160,7 +160,6 @@ def multiprocess_learn_LRNPTS(
     return all_learn_transitionerrors, all_learn_indexerrors, all_learn_rewards, all_learn_objectives, all_plan_rewards, all_plan_objectives
 
 
-
 def process_learn_LRAPTS_iteration(i, l_episodes, n_batches, n_steps, n_states, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, u_order, 
                                    plan_wip, w_range, w_trials):
 
@@ -252,7 +251,6 @@ def multiprocess_learn_LRAPTS(
         joblib.dump([all_learn_transitionerrors, all_learn_indexerrors, all_learn_rewards, all_learn_objectives, all_plan_rewards, all_plan_objectives], filename)
 
     return all_learn_transitionerrors, all_learn_indexerrors, all_learn_rewards, all_learn_objectives, all_plan_rewards, all_plan_objectives
-
 
 
 def process_ns_learn_LRAPTS_iteration(i, l_episodes, n_batches, n_steps, n_states, n_augmnts, n_arms, n_choices, threshold, 
@@ -392,6 +390,12 @@ def process_inf_learn_LRAPNTSDE_iteration(i, discount, n_steps, n_states, n_arms
     # Initialization
     print(f"Iteration {i} (TSDE) starts ...")
     start_time = time.time()
+
+    sample_paths = 1
+    learn_totalrewards = np.zeros((n_arms, sample_paths))
+    learn_utility = np.zeros((n_arms, sample_paths))
+    learn_states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
+
     results = {
         "learn_rewards": np.zeros((n_steps, n_arms)),
         "learn_objectives": np.zeros((n_steps, n_arms)),
@@ -417,15 +421,9 @@ def process_inf_learn_LRAPNTSDE_iteration(i, discount, n_steps, n_states, n_arms
             for x in range(n_states):
                 for act in range(2):
                     est_transitions[x, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
-    # Create lern_wip object based on the *sampled* transitions for this episode
     lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps, discount)
     lern_wip.get_indices(w_range, w_trials)
     # ------------------------------------
-
-    sample_paths = 1
-    learn_totalrewards = np.zeros((n_arms, sample_paths))
-    learn_utility = np.zeros((n_arms, sample_paths))
-    learn_states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
 
     for t in range(n_steps):
 
@@ -465,10 +463,6 @@ def process_inf_learn_LRAPNTSDE_iteration(i, discount, n_steps, n_states, n_arms
                 est_transitions = np.zeros((n_states, n_states, 2, n_arms))
                 for a in range(n_arms):
                     for act in range(2):
-                        # print('='*10)
-                        # print(f"Arm = {a}")
-                        # print(f"action : {act}")
-                        # print(counts[:, :, act, a])
                         for x in range(n_states):
                             est_transitions[x, :, act, a] = dirichlet.rvs(counts[x, :, act, a])[0]
 
@@ -490,12 +484,8 @@ def process_inf_learn_LRAPNTSDE_iteration(i, discount, n_steps, n_states, n_arms
                 counts[_learn_states[a], learn_states[a, s], learn_actions[a], a] += 1
         for a in range(n_arms):
             results["learn_transitionerrors"][t, a] = np.max(np.abs(est_transitions[:, :, :, a] - true_dyn[:, :, :, a]))
-            results["learn_rewards"][t, a] = np.mean(learn_totalrewards[a, :])
             results["learn_objectives"][t, a] = np.mean(learn_utility[a, :])
-        # print(f"t={t}, a={a}, states={states[a]}, learn_states={learn_states[a]}")
-        # print(f"t={t}, a={a}, plan_rew={true_rew[states[a], a]}, learn_rew={true_rew[learn_states[a], a]}, discount_val={discount_val}")
-        # print(f"t={t}, a={a}, plan_rewards={results['plan_rewards'][t, a]}, learn_rewards={results['learn_rewards'][t, a]}")
-        # print(f"t={t}, a={a}, plan_objective={results["plan_objectives"][t, a]}, learn_objective={results["learn_objectives"][t, a]}")
+            results["learn_rewards"][t, a] = np.mean(learn_totalrewards[a, :])
 
     print(f"Iteration {i} (TSDE) end with duration: {time.time() - start_time}")
     return results
@@ -507,7 +497,19 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
     # Initialization
     print(f"Iteration {i} (TSDE) starts ...")
     start_time = time.time()
+
+    sample_paths = 1
+    plan_utility = np.zeros((n_arms, sample_paths))
+    plan_totalrewards = np.zeros((n_arms, sample_paths))
+    plan_lifted = np.zeros((n_arms, sample_paths), dtype=np.int32)
+    plan_states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
+    learn_utility = np.zeros((n_arms, sample_paths))
+    learn_totalrewards = np.zeros((n_arms, sample_paths))
+    learn_lifted = np.zeros((n_arms, sample_paths), dtype=np.int32)
+    learn_states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
     results = {
+        "plan_rewards": np.zeros((n_steps, n_arms)),
+        "plan_objectives": np.zeros((n_steps, n_arms)),
         "learn_rewards": np.zeros((n_steps, n_arms)),
         "learn_objectives": np.zeros((n_steps, n_arms)),
         "learn_indexerrors": np.zeros((n_steps, n_arms)),
@@ -533,16 +535,13 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
             for x in range(n_states):
                 for act in range(2):
                     est_transitions[x, :, act, a] = dirichlet.rvs(np.ones(n_states))[0]
+
     # Create lern_wip object based on the *sampled* transitions for this episode
     lern_rawip = RiskAwareWhittleInf([n_states, n_augmnts, n_discounts], n_arms, true_rew, est_transitions, discount, u_type, u_order, threshold)
     lern_rawip.get_indices(w_range, w_trials)
+    lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps, discount)
+    lern_wip.get_indices(w_range, w_trials)
     # ------------------------------------
-
-    sample_paths = 1
-    learn_totalrewards = np.zeros((n_arms, sample_paths))
-    learn_utility = np.zeros((n_arms, sample_paths))
-    learn_lifted = np.zeros((n_arms, sample_paths), dtype=np.int32)
-    learn_states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
 
     for t in range(n_steps):
 
@@ -582,10 +581,6 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
                 est_transitions = np.zeros((n_states, n_states, 2, n_arms))
                 for a in range(n_arms):
                     for act in range(2):
-                        # print('='*10)
-                        # print(f"Arm = {a}")
-                        # print(f"action : {act}")
-                        # print(counts[:, :, act, a])
                         for x in range(n_states):
                             est_transitions[x, :, act, a] = dirichlet.rvs(counts[x, :, act, a])[0]
 
@@ -595,21 +590,9 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
                 lern_rawip.get_indices(w_range, w_trials)
                 lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps, discount)
                 lern_wip.get_indices(w_range, w_trials)
-                # for a in range(n_arms):
-                #     for x in range(n_states):
-                #         lern_rawip.whittle_indices[a][:, x, :] = lern_rawip.whittle_indices[a][:, x, :] + np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 1, a]) )
-                #         lern_rawip.whittle_indices[a][:, x, :] = np.maximum(0, lern_rawip.whittle_indices[a][:, x, :] - np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 0, a]) ))
-                #         lern_wip.whittle_indices[a][x] = lern_wip.whittle_indices[a][x] + np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 1, a]) )
-                #         lern_wip.whittle_indices[a][x] = np.maximum(0, lern_wip.whittle_indices[a][x] - np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 0, a]) ))
-
             else:
                 lern_wip = WhittleInf(n_states, n_arms, true_rew, est_transitions, n_steps, discount)
                 lern_wip.get_indices(w_range, w_trials)
-
-                # for a in range(n_arms):
-                #     for x in range(n_states):
-                #         lern_wip.whittle_indices[a][x] = lern_wip.whittle_indices[a][x] + np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 1, a]) )
-                #         lern_wip.whittle_indices[a][x] = np.maximum(0, lern_wip.whittle_indices[a][x] - np.sqrt( 2 * np.log( sum(counts[x, :, 0, a] + counts[x, :, 1, a]) ) / sum(counts[x, :, 0, a]) ))
 
         # --- End TSDE Episode Check ---
 
@@ -617,29 +600,36 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
         discount_val = discount ** t
         for s in range(sample_paths):
             if t < n_discounts:
+                plan_actions = plan_rawip.take_action(n_choices, {"l": plan_lifted[:, s], "x": plan_states[:, s], "t": t})
                 learn_actions = lern_rawip.take_action(n_choices, {"l": learn_lifted[:, s], "x": learn_states[:, s], "t": t})
             else:
+                plan_actions = plan_wip.take_action(n_choices, {"x": plan_states[:, s]})
                 learn_actions = lern_wip.take_action(n_choices, {"x": learn_states[:, s]})
             _learn_states = np.copy(learn_states[:, s])
             for a in range(n_arms):
+                plan_totalrewards[a, s] += discount_val * true_rew[plan_states[a, s], a]
                 learn_totalrewards[a, s] += discount_val * true_rew[learn_states[a, s], a]
+                plan_utility[a, s] = compute_utility(plan_totalrewards[a, s], threshold, u_type, u_order)
                 learn_utility[a, s] = compute_utility(learn_totalrewards[a, s], threshold, u_type, u_order)
                 if t < n_discounts:
+                    plan_lifted[a, s] = plan_rawip.get_reward_partition(plan_totalrewards[a, s])
                     learn_lifted[a, s] = lern_rawip.get_reward_partition(learn_totalrewards[a, s])
+                plan_states[a, s] = np.random.choice(n_states, p=true_dyn[plan_states[a, s], :, plan_actions[a], a])
                 learn_states[a, s] = np.random.choice(n_states, p=true_dyn[learn_states[a, s], :, learn_actions[a], a])
                 counts[_learn_states[a], learn_states[a, s], learn_actions[a], a] += 1
         for a in range(n_arms):
             results["learn_transitionerrors"][t, a] = np.max(np.abs(est_transitions[:, :, :, a] - true_dyn[:, :, :, a]))
             results["learn_rewards"][t, a] = np.mean(learn_totalrewards[a, :])
+            print(f"t = {t}, a = {a}")
+            print(results["learn_rewards"][t, a])
+            print('-'*10)
             results["learn_objectives"][t, a] = np.mean(learn_utility[a, :])
+            results["plan_rewards"][t, a] = np.mean(plan_totalrewards[a, :])
+            results["plan_objectives"][t, a] = np.mean(plan_utility[a, :])
             if t < n_discounts:
                 results["learn_indexerrors"][t, a] = np.max(np.abs(lern_rawip.whittle_indices[a] - plan_rawip.whittle_indices[a]))
             else:
                 results["learn_indexerrors"][t, a] = np.max(np.abs(lern_wip.whittle_indices[a] - plan_wip.whittle_indices[a]))
-        # print(f"t={t}, a={a}, states={states[a]}, learn_states={learn_states[a]}")
-        # print(f"t={t}, a={a}, plan_rew={true_rew[states[a], a]}, learn_rew={true_rew[learn_states[a], a]}, discount_val={discount_val}")
-        # print(f"t={t}, a={a}, plan_rewards={results['plan_rewards'][t, a]}, learn_rewards={results['learn_rewards'][t, a]}")
-        # print(f"t={t}, a={a}, plan_objective={results["plan_objectives"][t, a]}, learn_objective={results["learn_objectives"][t, a]}")
 
     print(f"Iteration {i} (TSDE) end with duration: {time.time() - start_time}")
     return results
@@ -657,21 +647,6 @@ def multiprocess_inf_learn_LRAPTSDE(
     plan_rawip.get_indices(w_range, w_trials)
 
     # Define arguments for each iteration
-    oracle_args = [
-        (plan_rawip, plan_wip, n_discounts, discount, n_steps, n_states, n_arms, n_choices, 
-         threshold, true_rew, true_dyn, initial_states, u_type, u_order) for _ in range(n_iterations)
-    ]
-
-    # Use multiprocessing pool
-    with Pool(num_workers) as pool:
-        oracle_res = pool.starmap(process_inftime_riskaware_whittle, oracle_args)
-
-    # Aggregate results
-    oracle_results = {}
-    oracle_results["rewards"] = np.stack([res["totalrewards"] for res in oracle_res])
-    oracle_results["objectives"] = np.stack([res["objectives"] for res in oracle_res])
-
-    # Define arguments for each iteration
     args = [
         (i, discount, n_steps, n_states, n_augmnts, n_discounts, n_arms, n_choices, threshold, true_rew, trans_type, true_dyn, initial_states, u_type, 
          u_order, plan_wip, plan_rawip, w_range, w_trials) 
@@ -680,14 +655,17 @@ def multiprocess_inf_learn_LRAPTSDE(
 
     # Use multiprocessing pool
     with Pool(num_workers) as pool:
-        riskaware_res = pool.starmap(process_inf_learn_LRAPTSDE_iteration, args)
+        all_res = pool.starmap(process_inf_learn_LRAPTSDE_iteration, args)
 
     # Aggregate results
     riskaware_results = {}
-    riskaware_results["transitionerrors"] = np.stack([res["learn_transitionerrors"] for res in riskaware_res])
-    riskaware_results["indexerrors"] = np.stack([res["learn_indexerrors"] for res in riskaware_res])
-    riskaware_results["rewards"] = np.stack([res["learn_rewards"] for res in riskaware_res])
-    riskaware_results["objectives"] = np.stack([res["learn_objectives"] for res in riskaware_res])
+    riskaware_results["transitionerrors"] = np.stack([res["learn_transitionerrors"] for res in all_res])
+    riskaware_results["indexerrors"] = np.stack([res["learn_indexerrors"] for res in all_res])
+    riskaware_results["objectives"] = np.stack([res["learn_objectives"] for res in all_res])
+    riskaware_results["rewards"] = np.stack([res["learn_rewards"] for res in all_res])
+    oracle_results = {}
+    oracle_results["objectives"] = np.stack([res["plan_objectives"] for res in all_res])
+    oracle_results["rewards"] = np.stack([res["plan_rewards"] for res in all_res])
 
     # Define arguments for each iteration
     args = [

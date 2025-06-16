@@ -144,22 +144,25 @@ def process_and_plot_inf(prob_err, indx_err, perf_ref, perf_lrn, suffix, path, k
     
     # trn_err = numpy.mean(prob_err, axis=(0, 2))
     # wis_err = numpy.mean(indx_err, axis=(0, 2))
-
     # arg_for_perf_ref = numpy.tile(numpy.sum(perf_ref, axis=0)[:, numpy.newaxis], (1, perf_lrn.shape[1]))
-    
-    arg_for_perf_ref = numpy.sum(perf_ref, axis=2)
-    arg_for_perf_lrn = numpy.sum(perf_lrn, axis=2)
 
+    arg_for_perf_ref = numpy.sum(perf_ref, axis=2)
     arg_for_perf_stt['RAP'] = numpy.mean(arg_for_perf_ref, axis=0)
     arg_for_bnds_stt['RAP'] = (arg_for_perf_stt['RAP']-numpy.std(arg_for_perf_ref, axis=0), arg_for_perf_stt['RAP']+numpy.std(arg_for_perf_ref, axis=0))
+    print(numpy.std(arg_for_perf_ref, axis=0))
+
+    arg_for_perf_lrn = numpy.sum(perf_lrn, axis=2)
     arg_for_perf_stt['RAPTS'] = numpy.mean(arg_for_perf_lrn, axis=0)
     arg_for_bnds_stt['RAPTS'] = (arg_for_perf_stt['RAPTS']-numpy.std(arg_for_perf_lrn, axis=0), arg_for_perf_stt['RAPTS']+numpy.std(arg_for_perf_lrn, axis=0))
+    print(numpy.std(arg_for_perf_lrn, axis=0))
 
     arg_for_perf_bas = None
     if perf_bas is not None:
         arg_for_perf_bas = numpy.sum(perf_bas, axis=2)
         arg_for_perf_stt['WIPTS'] = numpy.mean(arg_for_perf_bas, axis=0)
         arg_for_bnds_stt['WIPTS'] = (arg_for_perf_stt['WIPTS']-numpy.std(arg_for_perf_bas, axis=0), arg_for_perf_stt['WIPTS']+numpy.std(arg_for_perf_bas, axis=0))
+        print(numpy.std(arg_for_perf_bas, axis=0))
+    print('='*100)
 
     # output_lrn, output_bas = compute_regbounds_inf(arg_for_perf_ref, arg_for_perf_lrn, arg_for_perf_bas)
     # reg, creg, bounds, minmax = output_lrn
