@@ -285,7 +285,7 @@ def process_ns_riskaware_whittle_learning(raWhittle, raWhittle_learn, n_iteratio
                 lifted[a] = raWhittle.get_reward_partition(totalrewards[a, k])
                 states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
                 learn_totalrewards[a, k] += rewards[learn_states[a], t, a]
-                learn_lifted[a] = raWhittle.get_reward_partition(learn_totalrewards[a, k])
+                learn_lifted[a] = raWhittle_learn.get_reward_partition(learn_totalrewards[a, k])
                 learn_states[a] = np.random.choice(n_states, p=transitions[learn_states[a], :, learn_actions[a], a])
                 counts[_learn_states[a], learn_states[a], learn_actions[a], a] += 1
         for a in range(n_arms):
