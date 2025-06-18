@@ -1,5 +1,43 @@
+# Virtual Environment
+.venv/
+venv/
+*.env
+.env.*
+/env/
+
+# Python specific files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg-info/
+.Python
+build/
+dist/
+lib/
+include/
+bin/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Jupyter Notebook specific files
+.ipynb_checkpoints/
+
+# VS Code specific files
+.vscode/
+
+# Operating System Files
+.DS_Store
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# User-specified files to ignore
 *.joblib
 *.xlsx
-*.pyc
 *.png
 *.pdf
+
+# Logs and databases
+*.log
+*.db
