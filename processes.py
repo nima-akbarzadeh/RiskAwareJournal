@@ -338,7 +338,6 @@ def process_inf_riskaware_whittle(raWhittle, Whittle, n_discount, n_iterations, 
 
     return totalrewards, objectives
 
-
 def process_inf_riskaware_whittle_learning(raWhittle, raWhittle_learn, discount, n_steps, n_states, n_arms, n_choices, 
                                            threshold, rewards, transitions, initial_states, u_type, u_order):
     
@@ -369,3 +368,30 @@ def process_inf_riskaware_whittle_learning(raWhittle, raWhittle_learn, discount,
         learn_objectives[a] = compute_utility(learn_totalrewards[a], threshold, u_type, u_order)
 
     return totalrewards, objectives, learn_totalrewards, learn_objectives, counts
+
+
+def process_inf_riskaware_optimal(OptimalSolver, Whittle, n_discount, n_iterations, discount, n_steps, n_states, n_arms, n_choices, 
+                                  threshold, rewards, transitions, initial_states, u_type, u_order):
+
+    totalrewards = np.zeros(n_iterations)
+    objectives = np.zeros(n_iterations)
+    for k in range(n_iterations):
+        current_reward_bucket = OptimalSolver.get_initial_reward_bucket(totalrewards[k])
+        states = initial_states.copy()
+        for t in range(n_steps):
+            discount_val = discount ** t
+            if t < n_discount:
+                actions = OptimalSolver.get_action(
+                    x_states=states,
+                    y=current_reward_bucket,
+                    z=t
+                )
+            else:
+                actions = Whittle.take_action(n_choices, {"x": states})
+            for a in range(n_arms):
+                totalrewards[k] += discount_val * rewards[states[a], a]
+                states[a] = np.random.choice(n_states, p=transitions[states[a], :, actions[a], a])
+        current_reward_bucket = OptimalSolver.get_initial_reward_bucket(totalrewards[k])
+        objectives[k] = compute_utility(totalrewards[k], threshold, u_type, u_order)
+
+    return totalrewards, objectives

@@ -7,23 +7,50 @@ from utils_u import run_multiple_inf_planning_combinations
 import warnings
 warnings.filterwarnings("ignore")
 
-PATH = './planning-infinite-June25/'
+PATH = './planning-infinite-July25ForLearningC-nt50-ng50/'
 if not os.path.exists(PATH):
     os.makedirs(PATH)
 
 def main():
 
+    # # Planning parameters
+    # param_sets = {
+    #     'discount_factors': [0.8, 0.9, 0.99],
+    #     'n_steps': [100],
+    #     'n_states': [3, 4, 5],
+    #     'n_augmnt': [50],
+    #     'n_discnt': [100],
+    #     'n_arms_coefficient': [3, 4, 5],
+    #     'transition_type': ['structured'],
+    #     'utility_functions': [(1, 0), (2, 4), (2, 8), (2, 16), (3, 4), (3, 8), (3, 16)],
+    #     'thresholds': [0.3, 0.4, 0.5],
+    #     'fraction_of_arms': [0.1, 0.3]
+    # }
+
+    # Learning parameters
+    # param_sets = {
+    #     'discount_factors': [0.8, 0.9],
+    #     'n_steps': [50],
+    #     'n_states': [2, 3, 4, 5, 10],
+    #     'n_augmnt': [50],
+    #     'n_discnt': [50],
+    #     'n_arms_coefficient': [1, 2],
+    #     'transition_type': ['structured'],
+    #     'utility_functions': [(1, 0), (2, 4), (2, 8), (2, 16), (3, 4), (3, 8), (3, 16)],
+    #     'thresholds': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+    #     'fraction_of_arms': [0.1, 0.3, 0.5]
+    # }
     param_sets = {
-        'discount_factors': [0.8, 0.9, 0.99],
-        'n_steps': [100],
-        'n_states': [3, 4, 5],
+        'discount_factors': [0.99, 0.9, 0.8],
+        'n_steps': [50],
+        'n_states': [0],
         'n_augmnt': [50],
-        'n_discnt': [100],
-        'n_arms_coefficient': [3, 4, 5],
-        'transition_type': ['structured'],
-        'utility_functions': [(1, 0), (2, 4), (2, 8), (2, 16), (3, 4), (3, 8), (3, 16)],
-        'thresholds': [0.3, 0.4, 0.5],
-        'fraction_of_arms': [0.1, 0.3]
+        'n_discnt': [50],
+        'n_arms_coefficient': [1, 2],
+        'transition_type': ['clinical', 'clinical-v4', 'clinical-v3', 'clinical-v2'],
+        'utility_functions': [(3, 4), (3, 8), (3, 16)],
+        'thresholds': [0.6, 0.7, 0.8, 0.9],
+        'fraction_of_arms': [0.1, 0.3, 0.5]
     }
 
     # Iterations

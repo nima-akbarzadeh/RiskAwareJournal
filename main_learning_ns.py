@@ -6,34 +6,34 @@ warnings.filterwarnings("ignore")
 
 def main():
     param_sets_list = [
+        # {
+        #     'discount_factors': [0.99],
+        #     'n_steps': [20],
+        #     'n_states': [3, 4],
+        #     'n_augmnt': [50],
+        #     'n_arms': [5],
+        #     'transition_type': ['structured'],
+        #     'utility_functions': [(3, 16)],
+        #     'thresholds': [0.5, 0.75],
+        #     'arm_choices': [1]
+        # },
         {
             'discount_factors': [0.99],
-            'n_steps': [20],
-            'n_states': [3, 4],
-            'n_augmnt': [50],
-            'n_arms': [5],
-            'transition_type': ['structured'],
-            'utility_functions': [(3, 16)],
-            'thresholds': [0.5, 0.75],
-            'arm_choices': [1]
-        },
-        {
-            'discount_factors': [0.99],
-            'n_steps': [20],
+            'n_steps': [4],
             'n_states': [0],
-            'n_augmnt': [50],
+            'n_augmnt': [10],
             'n_arms': [5],
-            # 'transition_type': ['clinical'],
-            'transition_type': ['clinical', 'clinical-v4', 'clinical-v2', 'clinical-v3'],
-            'utility_functions': [(3, 16)],
-            'thresholds': [0.5, 0.75],
+            'transition_type': ['clinical-v2'],
+            # 'transition_type': ['clinical', 'clinical-v4', 'clinical-v2', 'clinical-v3'],
+            'utility_functions': [(3, 8)],
+            'thresholds': [0.5],
             'arm_choices': [1]
         },
     ]
 
-    learning_episodes = 500
+    learning_episodes = 200
     n_batches = 10
-    n_iterations = 25
+    n_iterations = 100
 
     save_data = True
     PATH = f'./learning-nsfinite-{learning_episodes}-{n_batches}-{n_iterations}/'

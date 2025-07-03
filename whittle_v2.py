@@ -1,5 +1,5 @@
 import numpy as np
-from itertools import product
+from itertools import product, combinations
 from abc import ABC, abstractmethod
 from typing import Tuple, List, Dict, Callable
 import warnings
@@ -865,3 +865,289 @@ class RiskAwareWhittleInf(BaseWhittleInf):
         
         return self._select_arms_by_indices(current_indices, n_choices)
 
+
+class OptimalRiskAwareRMAB:
+    """
+    Computes the optimal risk-aware policy for restless multi-armed bandits
+    by solving the full joint state space problem using dynamic programming.
+    """
+    
+    def __init__(self, num_states, num_arms, rewards, transition, discount, 
+                 u_type, u_order, threshold, m_choices):
+        """
+        Initialize the optimal risk-aware RMAB solver.
+        
+        Parameters:
+        - num_states: list [num_x, num_s, num_z] where:
+            - num_x: number of states per arm
+            - num_s: number of reward discretization buckets
+            - num_z: time horizon
+        - num_arms: number of arms (n)
+        - rewards: array of shape (num_x, num_arms) - immediate rewards
+        - transition: array of shape (num_x, num_x, 2, num_arms) - transition probabilities
+        - discount: discount factor
+        - u_type: utility function type
+        - u_order: utility function order parameter
+        - threshold: threshold for utility computation
+        - m_choices: number of arms to activate at each time (m)
+        """
+        self.discount = discount
+        self.num_x = num_states[0]
+        self.num_s = num_states[1]
+        self.num_z = num_states[2]
+        self.num_arms = num_arms
+        self.m_choices = m_choices
+        self.rewards = rewards
+        self.transition = transition
+        self.u_type = u_type
+        self.u_order = u_order
+        self.threshold = threshold
+        self.digits = 3
+        
+        # Discretize the total reward space
+        self.s_cutting_points = np.linspace(0, self.num_arms, self.num_s + 1)
+        self.all_total_rewards = [np.round(np.median(self.s_cutting_points[i:i + 2]), 3) 
+                                  for i in range(len(self.s_cutting_points) - 1)]
+        self.n_augment = len(self.all_total_rewards)
+        
+        # Precompute utility values
+        self.all_utility_values = []
+        for total_reward in self.all_total_rewards:
+            self.all_utility_values.append(
+                compute_utility(total_reward, threshold, u_type, u_order)
+            )
+        
+        # Generate all possible actions (combinations of m arms from n)
+        self.all_actions = list(combinations(range(num_arms), m_choices))
+        self.num_actions = len(self.all_actions)
+        
+        # Initialize value function and policy storage
+        self.V = None
+        self.policy = None
+        
+        # Warning for large state spaces
+        joint_state_size = (self.num_x ** self.num_arms) * self.n_augment * self.num_z
+        if joint_state_size > 1e6:
+            warnings.warn(f"Large state space size: {joint_state_size}. Computation may be slow.")
+
+    def get_reward_partition(self, reward_value):
+        """Get the discretized reward bucket index."""
+        index = np.searchsorted(self.s_cutting_points, reward_value, side='right')
+        if index == len(self.s_cutting_points):
+            index -= 1
+        return index - 1
+    
+    def state_to_index(self, x_states, y, z):
+        """
+        Convert a joint state to a single index.
+        
+        Parameters:
+        - x_states: array of arm states [x_1, ..., x_n]
+        - y: total reward bucket index
+        - z: time index
+        """
+        # Compute joint state index for arms
+        x_index = 0
+        multiplier = 1
+        for i in range(self.num_arms - 1, -1, -1):
+            x_index += x_states[i] * multiplier
+            multiplier *= self.num_x
+        
+        # Combine with reward and time indices
+        return x_index * self.n_augment * self.num_z + y * self.num_z + z
+    
+    def index_to_state(self, index):
+        """Convert a single index back to joint state (x_states, y, z)."""
+        z = index % self.num_z
+        temp = index // self.num_z
+        y = temp % self.n_augment
+        x_index = temp // self.n_augment
+        
+        # Decode arm states
+        x_states = np.zeros(self.num_arms, dtype=int)
+        for i in range(self.num_arms - 1, -1, -1):
+            x_states[i] = x_index % self.num_x
+            x_index //= self.num_x
+        
+        return x_states, y, z
+    
+    def compute_immediate_reward(self, x_states, action):
+        """
+        Compute immediate reward for taking an action in a joint state.
+        
+        Parameters:
+        - x_states: array of arm states
+        - action: tuple of arm indices to activate
+        """
+        total_reward = 0
+        for arm_idx in action:
+            total_reward += self.rewards[x_states[arm_idx], arm_idx]
+        return total_reward
+    
+    def compute_next_state_distribution(self, x_states, y, z, action):
+        """
+        Compute the distribution over next states given current state and action.
+        
+        Returns:
+        - next_states: list of (x_states', y', z') tuples
+        - probabilities: corresponding probabilities
+        """
+        # Time always decrements
+        next_z = z + 1
+        
+        # Get current total reward
+        current_total_reward = self.all_total_rewards[y]
+        
+        # Compute immediate reward
+        immediate_reward = self.compute_immediate_reward(x_states, action)
+        
+        # Compute new total reward and its bucket
+        new_total_reward = current_total_reward + (self.discount ** z) * immediate_reward
+        next_y = self.get_reward_partition(new_total_reward)
+        next_y = min(next_y, self.n_augment - 1)  # Ensure within bounds
+        
+        # Generate all possible next arm states
+        action_set = set(action)
+        next_states = []
+        probabilities = []
+        
+        # Use iterative approach for all possible transitions
+        def generate_transitions(arm_idx, current_x_states, current_prob):
+            if arm_idx == self.num_arms:
+                next_states.append((current_x_states.copy(), next_y, next_z))
+                probabilities.append(current_prob)
+                return
+            
+            x = x_states[arm_idx]
+            if arm_idx in action_set:
+                # Arm is activated
+                for next_x in range(self.num_x):
+                    prob = self.transition[x, next_x, 1, arm_idx]
+                    if prob > 0:
+                        current_x_states[arm_idx] = next_x
+                        generate_transitions(arm_idx + 1, current_x_states, current_prob * prob)
+                        current_x_states[arm_idx] = x_states[arm_idx]  # Reset
+            else:
+                # Arm is passive
+                for next_x in range(self.num_x):
+                    prob = self.transition[x, next_x, 0, arm_idx]
+                    if prob > 0:
+                        current_x_states[arm_idx] = next_x
+                        generate_transitions(arm_idx + 1, current_x_states, current_prob * prob)
+                        current_x_states[arm_idx] = x_states[arm_idx]  # Reset
+        
+        generate_transitions(0, x_states.copy(), 1.0)
+        
+        return next_states, probabilities
+    
+    def solve(self):
+        """
+        Solve for the optimal policy using dynamic programming.
+        """
+        # Total number of states
+        total_states = (self.num_x ** self.num_arms) * self.n_augment * self.num_z
+        
+        # Initialize value function
+        self.V = np.zeros(total_states + self.n_augment, dtype=np.float32)
+        
+        # Terminal values at z = num_z
+        for y in range(self.n_augment):
+            terminal_value = self.all_utility_values[y]
+            for x_index in range(self.num_x ** self.num_arms):
+                state_index = x_index * self.n_augment * self.num_z + y * self.num_z + self.num_z
+                self.V[state_index] = terminal_value
+        
+        # Initialize policy
+        self.policy = np.zeros(total_states, dtype=int)
+        
+        # Backward induction
+        for z in range(self.num_z - 1, -1, -1):
+            print(f"Solving for time step z = {z}")
+            
+            for state_idx in range((self.num_x ** self.num_arms) * self.n_augment):
+                x_index = state_idx // self.n_augment
+                y = state_idx % self.n_augment
+                
+                # Decode arm states
+                x_states = np.zeros(self.num_arms, dtype=int)
+                temp_x = x_index
+                for i in range(self.num_arms - 1, -1, -1):
+                    x_states[i] = temp_x % self.num_x
+                    temp_x //= self.num_x
+                
+                # Evaluate all possible actions
+                best_value = -np.inf
+                best_action_idx = 0
+                
+                for action_idx, action in enumerate(self.all_actions):
+                    # Compute expected value for this action
+                    next_states, probs = self.compute_next_state_distribution(
+                        x_states, y, z, action
+                    )
+                    
+                    expected_value = 0
+                    for (next_x_states, next_y, next_z), prob in zip(next_states, probs):
+                        next_idx = self.state_to_index(next_x_states, next_y, next_z)
+                        expected_value += prob * self.V[next_idx]
+                    
+                    if expected_value > best_value:
+                        best_value = expected_value
+                        best_action_idx = action_idx
+                
+                # Store value and policy
+                current_idx = self.state_to_index(x_states, y, z)
+                self.V[current_idx] = best_value
+                self.policy[current_idx] = best_action_idx
+    
+    def get_action(self, x_states, y, z):
+        """
+        Get the optimal action for a given state.
+        
+        Parameters:
+        - x_states: array of current arm states
+        - y: current total reward bucket index
+        - z: current time index
+        
+        Returns:
+        - action_vector: binary vector indicating which arms to activate
+        """
+        state_idx = self.state_to_index(x_states, y, z)
+        action_idx = self.policy[state_idx]
+        action_tuple = self.all_actions[action_idx]
+        
+        # Convert to binary action vector
+        action_vector = np.zeros(self.num_arms, dtype=int)
+        for arm_idx in action_tuple:
+            action_vector[arm_idx] = 1
+        
+        return action_vector
+    
+    def get_initial_reward_bucket(self, initial_reward=0):
+        """Get the initial reward bucket for starting the process."""
+        return self.get_reward_partition(initial_reward)
+
+
+# Example usage function
+def create_optimal_solver(num_states, num_arms, rewards, transition, discount, 
+                         u_type, u_order, threshold, m_choices):
+    """
+    Create and solve for the optimal risk-aware RMAB policy.
+    
+    Note: This is computationally intensive for large problems!
+    """
+    solver = OptimalRiskAwareRMAB(
+        num_states=num_states,
+        num_arms=num_arms,
+        rewards=rewards,
+        transition=transition,
+        discount=discount,
+        u_type=u_type,
+        u_order=u_order,
+        threshold=threshold,
+        m_choices=m_choices
+    )
+    
+    # Solve for optimal policy
+    solver.solve()
+    
+    return solver

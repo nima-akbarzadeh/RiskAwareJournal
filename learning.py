@@ -310,7 +310,7 @@ def process_ns_learn_LRAPTS_iteration(i, l_episodes, n_batches, n_steps, n_state
             results["plan_objectives"][l, a] = np.mean(plan_objectives[a, :])
             results["learn_rewards"][l, a] = np.mean(learn_totalrewards[a, :])
             results["learn_objectives"][l, a] = np.mean(learn_objectives[a, :])
-            print(f"Ite {i} - Arm {a} - AVG {np.mean(plan_totalrewards[a, :])} - STD {np.std(plan_totalrewards[a, :])}")
+            # print(f"Ite {i} - Arm {a} - AVG {np.mean(plan_totalrewards[a, :])} - STD {np.std(plan_totalrewards[a, :])}")
 
     print(f"Iteration {i} end with duration: {time.time() - start_time}")
     return results
@@ -499,17 +499,11 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
     start_time = time.time()
 
     sample_paths = 1
-    plan_utility = np.zeros((n_arms, sample_paths))
-    plan_totalrewards = np.zeros((n_arms, sample_paths))
-    plan_lifted = np.zeros((n_arms, sample_paths), dtype=np.int32)
-    plan_states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
     learn_utility = np.zeros((n_arms, sample_paths))
     learn_totalrewards = np.zeros((n_arms, sample_paths))
     learn_lifted = np.zeros((n_arms, sample_paths), dtype=np.int32)
     learn_states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
     results = {
-        "plan_rewards": np.zeros((n_steps, n_arms)),
-        "plan_objectives": np.zeros((n_steps, n_arms)),
         "learn_rewards": np.zeros((n_steps, n_arms)),
         "learn_objectives": np.zeros((n_steps, n_arms)),
         "learn_indexerrors": np.zeros((n_steps, n_arms)),
@@ -600,36 +594,65 @@ def process_inf_learn_LRAPTSDE_iteration(i, discount, n_steps, n_states, n_augmn
         discount_val = discount ** t
         for s in range(sample_paths):
             if t < n_discounts:
-                plan_actions = plan_rawip.take_action(n_choices, {"l": plan_lifted[:, s], "x": plan_states[:, s], "t": t})
                 learn_actions = lern_rawip.take_action(n_choices, {"l": learn_lifted[:, s], "x": learn_states[:, s], "t": t})
             else:
-                plan_actions = plan_wip.take_action(n_choices, {"x": plan_states[:, s]})
                 learn_actions = lern_wip.take_action(n_choices, {"x": learn_states[:, s]})
             _learn_states = np.copy(learn_states[:, s])
             for a in range(n_arms):
-                plan_totalrewards[a, s] += discount_val * true_rew[plan_states[a, s], a]
                 learn_totalrewards[a, s] += discount_val * true_rew[learn_states[a, s], a]
-                plan_utility[a, s] = compute_utility(plan_totalrewards[a, s], threshold, u_type, u_order)
                 learn_utility[a, s] = compute_utility(learn_totalrewards[a, s], threshold, u_type, u_order)
                 if t < n_discounts:
-                    plan_lifted[a, s] = plan_rawip.get_reward_partition(plan_totalrewards[a, s])
                     learn_lifted[a, s] = lern_rawip.get_reward_partition(learn_totalrewards[a, s])
-                plan_states[a, s] = np.random.choice(n_states, p=true_dyn[plan_states[a, s], :, plan_actions[a], a])
                 learn_states[a, s] = np.random.choice(n_states, p=true_dyn[learn_states[a, s], :, learn_actions[a], a])
                 counts[_learn_states[a], learn_states[a, s], learn_actions[a], a] += 1
         for a in range(n_arms):
             results["learn_transitionerrors"][t, a] = np.max(np.abs(est_transitions[:, :, :, a] - true_dyn[:, :, :, a]))
             results["learn_rewards"][t, a] = np.mean(learn_totalrewards[a, :])
-            print(f"t = {t}, a = {a}")
-            print(results["learn_rewards"][t, a])
-            print('-'*10)
             results["learn_objectives"][t, a] = np.mean(learn_utility[a, :])
-            results["plan_rewards"][t, a] = np.mean(plan_totalrewards[a, :])
-            results["plan_objectives"][t, a] = np.mean(plan_utility[a, :])
             if t < n_discounts:
                 results["learn_indexerrors"][t, a] = np.max(np.abs(lern_rawip.whittle_indices[a] - plan_rawip.whittle_indices[a]))
             else:
                 results["learn_indexerrors"][t, a] = np.max(np.abs(lern_wip.whittle_indices[a] - plan_wip.whittle_indices[a]))
+
+    print(f"Iteration {i} (TSDE) end with duration: {time.time() - start_time}")
+    return results
+
+def process_inf_plan_RA_iteration(i, discount, n_steps, n_states, n_augmnts, n_discounts, n_arms, n_choices, threshold, 
+                                  true_rew, trans_type, true_dyn, initial_states, u_type, u_order, plan_wip, plan_rawip, 
+                                  w_range, w_trials):
+
+    # Initialization
+    print(f"Iteration {i} (TSDE) starts ...")
+    start_time = time.time()
+
+    sample_paths = 1
+    plan_utility = np.zeros((n_arms, sample_paths))
+    plan_totalrewards = np.zeros((n_arms, sample_paths))
+    plan_lifted = np.zeros((n_arms, sample_paths), dtype=np.int32)
+    plan_states = (n_states - 1) * np.ones((n_arms, sample_paths), dtype=np.int32)
+    results = {
+        "plan_rewards": np.zeros((n_steps, n_arms)),
+        "plan_objectives": np.zeros((n_steps, n_arms)),
+    }
+
+    for t in range(n_steps):
+
+        # Use the policy computed at the start of the *current* episode k
+        discount_val = discount ** t
+        for s in range(sample_paths):
+            if t < n_discounts:
+                plan_actions = plan_rawip.take_action(n_choices, {"l": plan_lifted[:, s], "x": plan_states[:, s], "t": t})
+            else:
+                plan_actions = plan_wip.take_action(n_choices, {"x": plan_states[:, s]})
+            for a in range(n_arms):
+                plan_totalrewards[a, s] += discount_val * true_rew[plan_states[a, s], a]
+                plan_utility[a, s] = compute_utility(plan_totalrewards[a, s], threshold, u_type, u_order)
+                if t < n_discounts:
+                    plan_lifted[a, s] = plan_rawip.get_reward_partition(plan_totalrewards[a, s])
+                plan_states[a, s] = np.random.choice(n_states, p=true_dyn[plan_states[a, s], :, plan_actions[a], a])
+        for a in range(n_arms):
+            results["plan_rewards"][t, a] = np.mean(plan_totalrewards[a, :])
+            results["plan_objectives"][t, a] = np.mean(plan_utility[a, :])
 
     print(f"Iteration {i} (TSDE) end with duration: {time.time() - start_time}")
     return results
@@ -654,18 +677,31 @@ def multiprocess_inf_learn_LRAPTSDE(
     ]
 
     # Use multiprocessing pool
+    learn_res = [
+        {
+            "learn_transitionerrors": np.zeros((n_steps, n_arms)),
+            "learn_indexerrors": np.zeros((n_steps, n_arms)),
+            "learn_objectives": np.zeros((n_steps, n_arms)),
+            "learn_rewards": np.zeros((n_steps, n_arms)),
+            "plan_rewards": np.zeros((n_steps, n_arms)),
+            "plan_objectives": np.zeros((n_steps, n_arms))
+        } for _ in range(n_iterations)
+    ]
     with Pool(num_workers) as pool:
-        all_res = pool.starmap(process_inf_learn_LRAPTSDE_iteration, args)
+        learn_res = pool.starmap(process_inf_learn_LRAPTSDE_iteration, args)
 
     # Aggregate results
     riskaware_results = {}
-    riskaware_results["transitionerrors"] = np.stack([res["learn_transitionerrors"] for res in all_res])
-    riskaware_results["indexerrors"] = np.stack([res["learn_indexerrors"] for res in all_res])
-    riskaware_results["objectives"] = np.stack([res["learn_objectives"] for res in all_res])
-    riskaware_results["rewards"] = np.stack([res["learn_rewards"] for res in all_res])
+    riskaware_results["transitionerrors"] = np.stack([res["learn_transitionerrors"] for res in learn_res])
+    riskaware_results["indexerrors"] = np.stack([res["learn_indexerrors"] for res in learn_res])
+    riskaware_results["objectives"] = np.stack([res["learn_objectives"] for res in learn_res])
+    riskaware_results["rewards"] = np.stack([res["learn_rewards"] for res in learn_res])
+
+    with Pool(num_workers) as pool:
+        plan_res = pool.starmap(process_inf_plan_RA_iteration, args)
     oracle_results = {}
-    oracle_results["objectives"] = np.stack([res["plan_objectives"] for res in all_res])
-    oracle_results["rewards"] = np.stack([res["plan_rewards"] for res in all_res])
+    oracle_results["objectives"] = np.stack([res["plan_objectives"] for res in plan_res])
+    oracle_results["rewards"] = np.stack([res["plan_rewards"] for res in plan_res])
 
     # Define arguments for each iteration
     args = [
@@ -686,20 +722,37 @@ def multiprocess_inf_learn_LRAPTSDE(
 
     # Run all processes and collect results
     baseline_results = {}
-    # common_args = (n_iterations, discount, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order)
+    common_args = (n_iterations, discount, n_steps, n_states, n_arms, n_choices, threshold, true_rew, true_dyn, initial_states, u_type, u_order)
     
+    # plan_optimal = OptimalRiskAwareRMAB(
+    #     num_states=[n_states, n_augmnts, n_discounts],
+    #     num_arms=n_arms,
+    #     rewards=true_rew,
+    #     transition=true_dyn,
+    #     discount=discount,
+    #     u_type=u_type, 
+    #     u_order=u_order,
+    #     threshold=threshold,
+    #     m_choices=n_choices
+    # )
+
+    # # Solve for optimal policy (this may take time!)
+    # plan_optimal.solve()
+
     # # Define all processes to evaluate
     # processes = [
-    #     ("RND", lambda *args: process_inf_random_policy(*args)),
-    #     ("MYP", lambda *args: process_inf_myopic_policy(*args)),
+    #     # ("RND", lambda *args: process_inf_random_policy(*args)),
+    #     # ("MYP", lambda *args: process_inf_myopic_policy(*args)),
     #     ("WIP", lambda *args: process_inf_neutral_whittle(plan_wip, *args)),
-    #     ("RAP", lambda *args: process_inf_riskaware_whittle(plan_rawip, plan_wip, n_discounts, *args))
+    #     ("RAP", lambda *args: process_inf_riskaware_whittle(plan_rawip, plan_wip, n_discounts, *args)),
+    #     # ("OPT", lambda *args: process_inf_riskaware_optimal(plan_optimal, plan_wip, n_discounts, *args))
     # ]
 
     # for name, process in processes:
     #     rew, obj = process(*common_args)
-    #     baseline_results[f"{name}_rew"] = rew
     #     baseline_results[f"{name}_obj"] = obj
+    #     print(f"Baseline {name} objectives MEAN: {np.mean(np.sum(obj, axis=0))}")
+    #     print(f"Baseline {name} objectives STND: {np.std(np.sum(obj, axis=0))}")
 
     if save_data:
         joblib.dump([oracle_results, riskaware_results, neutral_results, baseline_results], filename)
